@@ -24,7 +24,9 @@ export function createBackup(db: DB, backupDir: string, opts: { note?: string; a
   fs.mkdirSync(backupDir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   const file = path.join(backupDir, `merqo-backup-${stamp}${opts.auto ? '-auto' : ''}-${newId(6)}.db`)
-  db.backup(file)
+  // VACUUM INTO = synchronous online snapshot (consistent read transaction);
+  // better-sqlite3's db.backup() is promise-based and would race the statSync.
+  db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`)
   const size = fs.statSync(file).size
 
   // verify the copy opens and passes integrity check

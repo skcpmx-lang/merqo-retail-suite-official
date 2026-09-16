@@ -3,8 +3,9 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
+    "jsx": "react-jsx",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitOverride": true,
@@ -16,9 +17,10 @@
     "forceConsistentCasingInFileNames": true,
     "paths": {
       "@core/*": ["./src/core/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@/*": ["./src/renderer/src/*"]
     },
     "types": ["node"]
   },
-  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/core/**/*.ts", "src/shared/**/*.ts", "electron.vite.config.ts", "tests/**/*.ts"]
+  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/core/**/*.ts", "src/shared/**/*.ts", "electron.vite.config.ts", "tests/**/*.ts", "tests/**/*.tsx"]
 }

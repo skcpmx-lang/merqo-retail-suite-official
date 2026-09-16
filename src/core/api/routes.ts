@@ -22,12 +22,13 @@ import * as settingsSvc from '../services/settings'
 import * as dataio from '../services/dataio'
 import * as searchSvc from '../services/search'
 import * as auditSvc from '../services/audit'
+import * as backupSvc from '../services/backup'
 import { CoreError } from '../services/accounts'
 import { audit } from '../services/audit'
 import { newId } from '../ids'
 import { h, requireAuth, requirePerm, authMiddleware, paging, rangeFromQuery, ctxOf, has, qs, prm } from './http'
 
-export function buildRoutes(db: DB, core: { initialized: () => boolean; monitorToken: () => string | null; setMonitorToken: (t: string | null) => void }): Router {
+export function buildRoutes(db: DB, core: { initialized: () => boolean; monitorToken: () => string | null; setMonitorToken: (t: string | null) => void }, backupDir = ''): Router {
   const r = Router()
 
   /* ───────────── meta & setup ───────────── */
@@ -603,6 +604,22 @@ export function buildRoutes(db: DB, core: { initialized: () => boolean; monitorT
   r.post('/import/products/commit', requireAuth, requirePerm(PERMS.PRODUCTS_IMPORT), h((req, res) => {
     const rows = (req.body?.rows ?? []) as dataio.ImportRow[]
     res.json(dataio.commitProductImport(db, ctxOf(req), req.auth!.businessId, rows))
+  }))
+
+  /* ───────────── backup & restore ───────────── */
+  r.get('/backups', requireAuth, requirePerm(PERMS.BACKUP_CREATE), h((_req, res) => {
+    res.json({ rows: backupSvc.listBackups(db) })
+  }))
+
+  r.post('/backups', requireAuth, requirePerm(PERMS.BACKUP_CREATE), h((req, res) => {
+    if (!backupDir) throw new CoreError('NO_BACKUP_DIR', 'ব্যাকআপ সংরক্ষণের জায়গা কনফিগার নেই।')
+    const meta = backupSvc.createBackup(db, backupDir, { note: req.body?.note, userId: req.auth!.userId, businessId: req.auth!.businessId })
+    audit(db, ctxOf(req), 'backup.create', 'backup', meta.file)
+    res.json(meta)
+  }))
+
+  r.post('/restore/validate', requireAuth, requirePerm(PERMS.BACKUP_RESTORE), h((req, res) => {
+    res.json(backupSvc.validateBackupFile(String(req.body?.file ?? '')))
   }))
 
   /* ───────────── audit helper for export actions ───────────── */

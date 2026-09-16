@@ -141,7 +141,8 @@ describe('§55 — ডিসকাউন্ট ও একাধিক পণ্�
         { product_id: p1.id, qty: 2, discount_pct: 10 }, // 200 - 20 = 180
         { product_id: p2.id, qty: 1 } // 60
       ],
-      invoice_discount: 40_00
+      invoice_discount: 40_00,
+      payments: []
     })
     expect(comp.subtotal).toBe(260_00)
     expect(comp.item_discount).toBe(20_00)

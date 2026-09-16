@@ -194,3 +194,25 @@ and most third-party CDNs are firewalled in the build sandbox. Git over HTTPS an
   engineering agent fetches and visually inspects them (git transport is open).
 - Locally: full TypeScript typecheck, the complete Vitest business-logic suite
   (in-memory SQLite), renderer production build, and packaging dry-runs.
+
+---
+
+## 8. Verification record (September 2026)
+
+Executed in the build sandbox against the completed codebase:
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Typecheck (main+core+tests) | `npx tsc --noEmit -p tsconfig.json` | 0 errors |
+| Typecheck (renderer) | `npx tsc --noEmit -p src/renderer/tsconfig.json` | 0 errors |
+| Core + API smoke tests | `npx vitest run --config tests/vitest.config.ts` | 30/30 pass |
+| Production build | `npm run build` (electron-vite) | out/{main,preload,renderer} |
+| API smoke over real HTTP | `tests/api-smoke.test.ts` (boots core on ephemeral port) | 9/9 scenarios |
+| Full UI smoke — 30 routes | `tests/ui-smoke.test.tsx` (real React app in jsdom vs live QA server) | 30/30 mounts, 0 render errors |
+| Number consistency | dashboard vs `reports/pnl` vs account ledger vs `reports/receivables` | exact match (one source of truth) |
+| Windows installer | `npm run dist` on GitHub Actions (`windows-latest`) | CI workflow `.github/workflows/ci.yml` |
+
+QA harness: `scripts/qa-server.ts` serves the production-built SPA and the real
+core API on a single origin; `scripts/qa-seed.sh` populates realistic Bengali
+demo data **through the app's own HTTP API** (no direct DB writes), so the seed
+exercises the same validation, ledger postings and audit paths as production.

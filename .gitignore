@@ -7,5 +7,4 @@ release/
 .env
 .vite/
 coverage/
-resources/icons/*.ico
 resources/icons/*.png.orig

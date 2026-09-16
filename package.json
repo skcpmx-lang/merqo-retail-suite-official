@@ -14,11 +14,12 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
-    "test": "vitest run",
+    "test": "vitest run --config tests/vitest.config.ts",
     "test:watch": "vitest",
     "start": "electron-vite preview",
     "dist": "electron-vite build && electron-builder --win nsis",
-    "dist:dir": "electron-vite build && electron-builder --win nsis --dir"
+    "dist:dir": "electron-vite build && electron-builder --win nsis --dir",
+    "test:ui": "MQ_QA_FRESH=1 node out/qa/server.cjs & sleep 1 && npx vitest run --config tests/vitest.config.ts tests/ui-smoke.test.tsx"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",
@@ -34,6 +35,9 @@
     "recharts": "^3.10.1"
   },
   "devDependencies": {
+    "@fontsource/hind-siliguri": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@testing-library/react": "^16.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/express": "^5.0.6",
     "@types/jsbarcode": "^3.11.4",
@@ -46,9 +50,46 @@
     "electron": "^44.4.1",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "jsdom": "^30.0.1",
+    "playwright-core": "^1.49.1",
     "png2icons": "^2.0.1",
     "typescript": "^7.0.2",
     "vite": "^7.3.6",
     "vitest": "^5.0.1"
+  },
+  "build": {
+    "appId": "com.merqo.retailsuite",
+    "productName": "MERQO Retail Suite",
+    "copyright": "Copyright © 2026 MERQO",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**"
+    ],
+    "win": {
+      "icon": "resources/icons/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MERQO Retail Suite",
+      "artifactName": "MERQO-Retail-Suite-Setup-${version}.exe",
+      "license": "docs/LICENSE-COMMERCIAL.md"
+    }
   }
 }

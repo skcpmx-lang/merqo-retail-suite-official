@@ -10,6 +10,7 @@ export interface CoreOptions {
   db: DB
   port: number
   host: string // 127.0.0.1 (single-PC) or 0.0.0.0 (server mode)
+  backupDir: string
   log?: (msg: string) => void
 }
 
@@ -60,7 +61,7 @@ export function startCore(opts: CoreOptions): CoreHandle {
     initialized: () => ((opts.db.prepare(`SELECT COUNT(*) c FROM users`).get() as { c: number }).c > 0),
     monitorToken: () => monitorKey,
     setMonitorToken: (t) => { monitorKey = t }
-  }))
+  }, opts.backupDir))
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'NOT_FOUND', message: 'রিসোর্সটি পাওয়া যায়নি।' }))
   app.use(errorHandler(opts.log))
