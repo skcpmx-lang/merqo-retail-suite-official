@@ -1,0 +1,53 @@
+{
+  "name": "merqo-retail-suite",
+  "productName": "MERQO Retail Suite",
+  "description": "MERQO Retail Suite — production-grade desktop retail business management platform",
+  "version": "1.0.0",
+  "private": true,
+  "author": {
+    "name": "MERQO",
+    "email": "merqoonline@gmail.com"
+  },
+  "license": "SEE LICENSE IN docs/LICENSE-COMMERCIAL.md",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/renderer/tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder --win nsis",
+    "dist:dir": "electron-vite build && electron-builder --win nsis --dir"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.103.1",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.2.1",
+    "jsbarcode": "^3.12.3",
+    "lucide-react": "^1.46.0",
+    "papaparse": "^5.7.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/jsbarcode": "^3.11.4",
+    "@types/node": "^24.13.5",
+    "@types/papaparse": "^5.5.2",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "png2icons": "^2.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.1"
+  }
+}
