@@ -29,25 +29,27 @@ export interface PartyInput {
 }
 
 export function createCustomer(db: DB, ctx: AuditCtx, businessId: string, input: PartyInput): CustomerRow {
-  if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'গ্রাহকের নাম দিন।')
-  if (input.code?.trim()) {
-    const dup = db.prepare(`SELECT 1 FROM customers WHERE business_id=? AND code=?`).get(businessId, input.code.trim())
-    if (dup) throw new CoreError('DUP_CODE', `কাস্টমার কোড "${input.code}" আগে থেকেই আছে।`)
-  }
-  const id = newId()
-  db.prepare(
-    `INSERT INTO customers (id, business_id, code, name, phone, address, email, note, opening_due, receivable, status, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,'active',?)`
-  ).run(
-    id, businessId, input.code?.trim() || null, input.name.trim(), input.phone?.trim() || null,
-    input.address?.trim() || null, input.email?.trim() || null, input.note ?? null,
-    input.opening_due ?? 0, input.opening_due ?? 0, now()
-  )
-  if ((input.opening_due ?? 0) > 0) {
-    audit(db, { ...ctx, businessId }, 'customer.opening_due', 'customer', id, null, { opening_due: input.opening_due })
-  }
-  audit(db, { ...ctx, businessId }, 'customer.create', 'customer', id, null, { name: input.name, phone: input.phone })
-  return getCustomer(db, businessId, id)
+  return db.transaction(() => {
+    if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'গ্রাহকের নাম দিন।')
+    if (input.code?.trim()) {
+      const dup = db.prepare(`SELECT 1 FROM customers WHERE business_id=? AND code=?`).get(businessId, input.code.trim())
+      if (dup) throw new CoreError('DUP_CODE', `কাস্টমার কোড "${input.code}" আগে থেকেই আছে।`)
+    }
+    const id = newId()
+    db.prepare(
+      `INSERT INTO customers (id, business_id, code, name, phone, address, email, note, opening_due, receivable, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,'active',?)`
+    ).run(
+      id, businessId, input.code?.trim() || null, input.name.trim(), input.phone?.trim() || null,
+      input.address?.trim() || null, input.email?.trim() || null, input.note ?? null,
+      input.opening_due ?? 0, input.opening_due ?? 0, now()
+    )
+    if ((input.opening_due ?? 0) > 0) {
+      audit(db, { ...ctx, businessId }, 'customer.opening_due', 'customer', id, null, { opening_due: input.opening_due })
+    }
+    audit(db, { ...ctx, businessId }, 'customer.create', 'customer', id, null, { name: input.name, phone: input.phone })
+    return getCustomer(db, businessId, id)
+  })()
 }
 
 export function updateCustomer(db: DB, ctx: AuditCtx, businessId: string, id: string, patch: Partial<PartyInput> & { status?: string }): CustomerRow {
@@ -104,16 +106,18 @@ export interface SupplierRow {
 }
 
 export function createSupplier(db: DB, ctx: AuditCtx, businessId: string, input: PartyInput): SupplierRow {
-  if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'সরবরাহকারীর নাম দিন।')
-  const dup = db.prepare(`SELECT 1 FROM suppliers WHERE business_id=? AND name=?`).get(businessId, input.name.trim())
-  if (dup) throw new CoreError('DUP_NAME', 'এই নামে আরেকটি সরবরাহকারী আছে।')
-  const id = newId()
-  db.prepare(
-    `INSERT INTO suppliers (id, business_id, name, company, phone, email, address, opening_due, payable, status, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,'active',?)`
-  ).run(id, businessId, input.name.trim(), input.company ?? null, input.phone?.trim() || null, input.email ?? null, input.address ?? null, input.opening_due ?? 0, input.opening_due ?? 0, now())
-  audit(db, { ...ctx, businessId }, 'supplier.create', 'supplier', id, null, { name: input.name })
-  return getSupplier(db, businessId, id)
+  return db.transaction(() => {
+    if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'সরবরাহকারীর নাম দিন।')
+    const dup = db.prepare(`SELECT 1 FROM suppliers WHERE business_id=? AND name=?`).get(businessId, input.name.trim())
+    if (dup) throw new CoreError('DUP_NAME', 'এই নামে আরেকটি সরবরাহকারী আছে।')
+    const id = newId()
+    db.prepare(
+      `INSERT INTO suppliers (id, business_id, name, company, phone, email, address, opening_due, payable, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,'active',?)`
+    ).run(id, businessId, input.name.trim(), input.company ?? null, input.phone?.trim() || null, input.email ?? null, input.address ?? null, input.opening_due ?? 0, input.opening_due ?? 0, now())
+    audit(db, { ...ctx, businessId }, 'supplier.create', 'supplier', id, null, { name: input.name })
+    return getSupplier(db, businessId, id)
+  })()
 }
 
 export function updateSupplier(db: DB, ctx: AuditCtx, businessId: string, id: string, patch: Partial<PartyInput> & { status?: string }): SupplierRow {

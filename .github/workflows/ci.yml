@@ -42,7 +42,8 @@ jobs:
   windows-installer:
     runs-on: windows-latest
     needs: verify
-    if: github.ref == 'refs/heads/main'
+    # automatic on main; also runnable via workflow_dispatch on the RC branch
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 

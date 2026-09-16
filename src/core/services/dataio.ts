@@ -84,13 +84,21 @@ export function validateProductRows(db: DB, businessId: string, rows: ImportRow[
     if (os != null && (Number.isNaN(os) || os < 0)) errs.push('শুরুর স্টক সঠিক নয়')
     out.push({ ...r, errors: errs })
   }
-  // duplicate rows within the file (same sku/barcode/name)
-  const seen = new Map<string, number>()
+  // duplicate rows within the file — sku and barcode checked independently
+  // (two different products sharing one barcode is a real retail data hazard)
+  const seenSku = new Map<string, number>()
+  const seenBarcode = new Map<string, number>()
   for (const r of out) {
-    const key = (r.data['sku'] || r.data['barcode'] || r.data['name'] || '').trim().toLowerCase()
-    if (!key) continue
-    if (seen.has(key)) r.errors.push(`ফাইলের লাইন ${seen.get(key)} এর সাথে সদৃশ`)
-    else seen.set(key, r.line)
+    const sku = (r.data['sku'] || '').trim().toLowerCase()
+    const barcode = (r.data['barcode'] || '').trim()
+    if (sku) {
+      if (seenSku.has(sku)) r.errors.push(`ফাইলের লাইন ${seenSku.get(sku)} এর সাথে SKU সদৃশ`)
+      else seenSku.set(sku, r.line)
+    }
+    if (barcode) {
+      if (seenBarcode.has(barcode)) r.errors.push(`ফাইলের লাইন ${seenBarcode.get(barcode)} এর সাথে বারকোড সদৃশ`)
+      else seenBarcode.set(barcode, r.line)
+    }
   }
   return out
 }

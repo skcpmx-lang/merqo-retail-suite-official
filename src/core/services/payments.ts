@@ -13,54 +13,58 @@ export function collectCustomerDue(
   db: DB, ctx: AuditCtx, businessId: string,
   input: { customer_id: string; amount: number; account_id: string; method: string; date?: number; note?: string }
 ) {
-  const c = db.prepare(`SELECT id, name, receivable FROM customers WHERE id=? AND business_id=? AND status='active'`).get(input.customer_id, businessId) as
-    | { id: string; name: string; receivable: number }
-    | undefined
-  if (!c) throw new CoreError('CUSTOMER_NOT_FOUND', 'গ্রাহক পাওয়া যায়নি।')
-  const amount = Math.round(input.amount)
-  if (amount <= 0) throw new CoreError('BAD_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।')
-  if (amount > c.receivable) throw new CoreError('OVERPAY', `মোট বকেয়া ৳${(c.receivable / 100).toFixed(2)} — এর চেয়ে বেশি নেওয়া যাবে না।`)
-  const acc = db.prepare(`SELECT id FROM accounts WHERE id=? AND business_id=? AND status='active'`).get(input.account_id, businessId)
-  if (!acc) throw new CoreError('ACCOUNT_NOT_FOUND', 'হিসাব নির্বাচন করুন।')
-  const t = input.date ?? now()
-  const voucher = nextNumber(db, businessId, 'receipt')
+  return db.transaction(() => {
+    const c = db.prepare(`SELECT id, name, receivable FROM customers WHERE id=? AND business_id=? AND status='active'`).get(input.customer_id, businessId) as
+      | { id: string; name: string; receivable: number }
+      | undefined
+    if (!c) throw new CoreError('CUSTOMER_NOT_FOUND', 'গ্রাহক পাওয়া যায়নি।')
+    const amount = Math.round(input.amount)
+    if (amount <= 0) throw new CoreError('BAD_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।')
+    if (amount > c.receivable) throw new CoreError('OVERPAY', `মোট বকেয়া ৳${(c.receivable / 100).toFixed(2)} — এর চেয়ে বেশি নেওয়া যাবে না।`)
+    const acc = db.prepare(`SELECT id FROM accounts WHERE id=? AND business_id=? AND status='active'`).get(input.account_id, businessId)
+    if (!acc) throw new CoreError('ACCOUNT_NOT_FOUND', 'হিসাব নির্বাচন করুন।')
+    const t = input.date ?? now()
+    const voucher = nextNumber(db, businessId, 'receipt')
 
-  db.prepare(`UPDATE customers SET receivable = receivable - ? WHERE id=?`).run(amount, c.id)
-  postEntry(db, { accountId: input.account_id, amount, type: 'customer_payment', refType: 'customer', refId: c.id, note: `বকেয়া আদায় — ${c.name}`, userId: ctx.userId, date: t })
-  const pid = newId()
-  db.prepare(
-    `INSERT INTO payments (id, business_id, voucher_no, party_type, party_id, party_name, direction, amount, account_id, method, ref_type, ref_id, date, note, user_id, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(pid, businessId, voucher, 'customer', c.id, c.name, 'in', amount, input.account_id, input.method, 'customer', c.id, t, input.note ?? null, ctx.userId ?? null, now())
-  audit(db, { ...ctx, businessId }, 'customer.payment', 'customer', c.id, { receivable: c.receivable }, { receivable: c.receivable - amount }, input.note)
-  return { voucher_no: voucher, payment_id: pid, receivable_after: c.receivable - amount, customer_name: c.name, amount, method: input.method, date: t }
+    db.prepare(`UPDATE customers SET receivable = receivable - ? WHERE id=?`).run(amount, c.id)
+    postEntry(db, { accountId: input.account_id, amount, type: 'customer_payment', refType: 'customer', refId: c.id, note: `বকেয়া আদায় — ${c.name}`, userId: ctx.userId, date: t })
+    const pid = newId()
+    db.prepare(
+      `INSERT INTO payments (id, business_id, voucher_no, party_type, party_id, party_name, direction, amount, account_id, method, ref_type, ref_id, date, note, user_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(pid, businessId, voucher, 'customer', c.id, c.name, 'in', amount, input.account_id, input.method, 'customer', c.id, t, input.note ?? null, ctx.userId ?? null, now())
+    audit(db, { ...ctx, businessId }, 'customer.payment', 'customer', c.id, { receivable: c.receivable }, { receivable: c.receivable - amount }, input.note)
+    return { voucher_no: voucher, payment_id: pid, receivable_after: c.receivable - amount, customer_name: c.name, amount, method: input.method, date: t }
+  })()
 }
 
 export function paySupplierDue(
   db: DB, ctx: AuditCtx, businessId: string,
   input: { supplier_id: string; amount: number; account_id: string; method: string; date?: number; note?: string }
 ) {
-  const s = db.prepare(`SELECT id, name, payable FROM suppliers WHERE id=? AND business_id=? AND status='active'`).get(input.supplier_id, businessId) as
-    | { id: string; name: string; payable: number }
-    | undefined
-  if (!s) throw new CoreError('SUPPLIER_NOT_FOUND', 'সরবরাহকারী পাওয়া যায়নি।')
-  const amount = Math.round(input.amount)
-  if (amount <= 0) throw new CoreError('BAD_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।')
-  if (amount > s.payable) throw new CoreError('OVERPAY', `মোট বকেয়া ৳${(s.payable / 100).toFixed(2)} — এর চেয়ে বেশি দেওয়া যাবে না।`)
-  const acc = db.prepare(`SELECT id FROM accounts WHERE id=? AND business_id=? AND status='active'`).get(input.account_id, businessId)
-  if (!acc) throw new CoreError('ACCOUNT_NOT_FOUND', 'হিসাব নির্বাচন করুন।')
-  const t = input.date ?? now()
-  const voucher = nextNumber(db, businessId, 'voucher')
+  return db.transaction(() => {
+    const s = db.prepare(`SELECT id, name, payable FROM suppliers WHERE id=? AND business_id=? AND status='active'`).get(input.supplier_id, businessId) as
+      | { id: string; name: string; payable: number }
+      | undefined
+    if (!s) throw new CoreError('SUPPLIER_NOT_FOUND', 'সরবরাহকারী পাওয়া যায়নি।')
+    const amount = Math.round(input.amount)
+    if (amount <= 0) throw new CoreError('BAD_AMOUNT', 'পরিশোধের পরিমাণ সঠিক নয়।')
+    if (amount > s.payable) throw new CoreError('OVERPAY', `মোট বকেয়া ৳${(s.payable / 100).toFixed(2)} — এর চেয়ে বেশি দেওয়া যাবে না।`)
+    const acc = db.prepare(`SELECT id FROM accounts WHERE id=? AND business_id=? AND status='active'`).get(input.account_id, businessId)
+    if (!acc) throw new CoreError('ACCOUNT_NOT_FOUND', 'হিসাব নির্বাচন করুন।')
+    const t = input.date ?? now()
+    const voucher = nextNumber(db, businessId, 'voucher')
 
-  db.prepare(`UPDATE suppliers SET payable = payable - ? WHERE id=?`).run(amount, s.id)
-  postEntry(db, { accountId: input.account_id, amount: -amount, type: 'supplier_payment', refType: 'supplier', refId: s.id, note: `বকেয়া পরিশোধ — ${s.name}`, userId: ctx.userId, date: t })
-  const pid = newId()
-  db.prepare(
-    `INSERT INTO payments (id, business_id, voucher_no, party_type, party_id, party_name, direction, amount, account_id, method, ref_type, ref_id, date, note, user_id, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(pid, businessId, voucher, 'supplier', s.id, s.name, 'out', amount, input.account_id, input.method, 'supplier', s.id, t, input.note ?? null, ctx.userId ?? null, now())
-  audit(db, { ...ctx, businessId }, 'supplier.payment', 'supplier', s.id, { payable: s.payable }, { payable: s.payable - amount }, input.note)
-  return { voucher_no: voucher, payment_id: pid, payable_after: s.payable - amount }
+    db.prepare(`UPDATE suppliers SET payable = payable - ? WHERE id=?`).run(amount, s.id)
+    postEntry(db, { accountId: input.account_id, amount: -amount, type: 'supplier_payment', refType: 'supplier', refId: s.id, note: `বকেয়া পরিশোধ — ${s.name}`, userId: ctx.userId, date: t })
+    const pid = newId()
+    db.prepare(
+      `INSERT INTO payments (id, business_id, voucher_no, party_type, party_id, party_name, direction, amount, account_id, method, ref_type, ref_id, date, note, user_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(pid, businessId, voucher, 'supplier', s.id, s.name, 'out', amount, input.account_id, input.method, 'supplier', s.id, t, input.note ?? null, ctx.userId ?? null, now())
+    audit(db, { ...ctx, businessId }, 'supplier.payment', 'supplier', s.id, { payable: s.payable }, { payable: s.payable - amount }, input.note)
+    return { voucher_no: voucher, payment_id: pid, payable_after: s.payable - amount }
+  })()
 }
 
 export function listPayments(

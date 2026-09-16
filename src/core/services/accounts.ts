@@ -75,17 +75,19 @@ export function createAccount(
   db: DB, ctx: AuditCtx, businessId: string,
   input: { name: string; type: AccountType; provider?: string; accountNo?: string; agentNumber?: string; note?: string; openingBalance?: number }
 ): AccountRow {
-  const dup = db.prepare(`SELECT 1 FROM accounts WHERE business_id=? AND name=?`).get(businessId, input.name.trim())
-  if (dup) throw new CoreError('DUPLICATE', 'এই নামে আরেকটি হিসাব আছে।')
-  const id = newId()
-  const opening = input.openingBalance ?? 0
-  db.prepare(
-    `INSERT INTO accounts (id, business_id, name, type, provider, account_no, agent_number, note, opening_balance, balance, is_system, status, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,0,0,'active',?)`
-  ).run(id, businessId, input.name.trim(), input.type, input.provider ?? null, input.accountNo ?? null, input.agentNumber ?? null, input.note ?? null, opening, now())
-  postEntry(db, { accountId: id, amount: opening, type: 'opening', note: 'শুরুর ব্যালেন্স', userId: ctx.userId })
-  audit(db, { ...ctx, businessId }, 'account.create', 'account', id, null, { name: input.name, type: input.type, opening })
-  return getAccount(db, businessId, id)
+  return db.transaction(() => {
+    const dup = db.prepare(`SELECT 1 FROM accounts WHERE business_id=? AND name=?`).get(businessId, input.name.trim())
+    if (dup) throw new CoreError('DUPLICATE', 'এই নামে আরেকটি হিসাব আছে।')
+    const id = newId()
+    const opening = input.openingBalance ?? 0
+    db.prepare(
+      `INSERT INTO accounts (id, business_id, name, type, provider, account_no, agent_number, note, opening_balance, balance, is_system, status, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,0,0,'active',?)`
+    ).run(id, businessId, input.name.trim(), input.type, input.provider ?? null, input.accountNo ?? null, input.agentNumber ?? null, input.note ?? null, opening, now())
+    postEntry(db, { accountId: id, amount: opening, type: 'opening', note: 'শুরুর ব্যালেন্স', userId: ctx.userId })
+    audit(db, { ...ctx, businessId }, 'account.create', 'account', id, null, { name: input.name, type: input.type, opening })
+    return getAccount(db, businessId, id)
+  })()
 }
 
 export function updateAccount(
@@ -110,22 +112,24 @@ export function transferFunds(
   db: DB, ctx: AuditCtx, businessId: string,
   input: { from: string; to: string; amount: number; fee?: number; date?: number; note?: string }
 ): void {
-  if (input.from === input.to) throw new CoreError('SAME_ACCOUNT', 'একই হিসাবে ট্রান্সফার করা যায় না।')
-  if (input.amount <= 0) throw new CoreError('BAD_AMOUNT', 'ট্রান্সফারের পরিমাণ সঠিক নয়।')
-  const from = getAccount(db, businessId, input.from)
-  if (from.balance < input.amount + (input.fee ?? 0)) {
-    throw new CoreError('INSUFFICIENT_BALANCE', `"${from.name}" হিসাবে পর্যাপ্ত ব্যালেন্স নেই।`)
-  }
-  const id = newId()
-  const t = input.date ?? now()
-  const fee = input.fee ?? 0
-  postEntry(db, { accountId: input.from, amount: -(input.amount + fee), type: 'transfer_out', refType: 'transfer', refId: id, note: input.note, userId: ctx.userId, date: t })
-  postEntry(db, { accountId: input.to, amount: input.amount, type: 'transfer_in', refType: 'transfer', refId: id, note: input.note, userId: ctx.userId, date: t })
-  db.prepare(
-    `INSERT INTO transfers (id, business_id, from_account, to_account, amount, fee, date, note, user_id, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(id, businessId, input.from, input.to, input.amount, fee, t, input.note ?? null, ctx.userId ?? null, now())
-  audit(db, { ...ctx, businessId }, 'account.transfer', 'transfer', id, null, input)
+  return db.transaction(() => {
+    if (input.from === input.to) throw new CoreError('SAME_ACCOUNT', 'একই হিসাবে ট্রান্সফার করা যায় না।')
+    if (input.amount <= 0) throw new CoreError('BAD_AMOUNT', 'ট্রান্সফারের পরিমাণ সঠিক নয়।')
+    const from = getAccount(db, businessId, input.from)
+    if (from.balance < input.amount + (input.fee ?? 0)) {
+      throw new CoreError('INSUFFICIENT_BALANCE', `"${from.name}" হিসাবে পর্যাপ্ত ব্যালেন্স নেই।`)
+    }
+    const id = newId()
+    const t = input.date ?? now()
+    const fee = input.fee ?? 0
+    postEntry(db, { accountId: input.from, amount: -(input.amount + fee), type: 'transfer_out', refType: 'transfer', refId: id, note: input.note, userId: ctx.userId, date: t })
+    postEntry(db, { accountId: input.to, amount: input.amount, type: 'transfer_in', refType: 'transfer', refId: id, note: input.note, userId: ctx.userId, date: t })
+    db.prepare(
+      `INSERT INTO transfers (id, business_id, from_account, to_account, amount, fee, date, note, user_id, created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`
+    ).run(id, businessId, input.from, input.to, input.amount, fee, t, input.note ?? null, ctx.userId ?? null, now())
+    audit(db, { ...ctx, businessId }, 'account.transfer', 'transfer', id, null, input)
+  })()
 }
 
 export interface LedgerQuery {

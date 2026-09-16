@@ -8,7 +8,7 @@
  * F returns guards · G import rollback · H backup/restore round-trip ·
  * I MFS configuration · J concurrency · K first-run production reset.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { makeWorld, assertLedgerConsistent, type World } from './setup'
 import { startCore, type CoreHandle } from '@core/index'
 import { openDatabase } from '@core/db/connection'
@@ -624,4 +624,133 @@ describe('L · remote owner monitor', () => {
     const off = await fetch(`${base}/api/monitor/data?business=${(bid as { id: string }).id}`, { headers: { authorization: 'Bearer mqm_testkey123' } })
     expect(off.status).toBe(404)
   })
+})
+
+/* ═══════════ M · ATOMICITY — mid-operation failure leaves zero partial state ═══════════ */
+describe('M · transaction atomicity', () => {
+  it('a crash between sale insert and ledger post rolls back EVERYTHING', async () => {
+    const accountsMod = await import('@core/services/accounts')
+    const before = {
+      sales: (world.db.prepare('SELECT COUNT(*) c FROM sales').get() as { c: number }).c,
+      cash: bal(world.cashId),
+      movs: (world.db.prepare('SELECT COUNT(*) c FROM stock_movements').get() as { c: number }).c
+    }
+    const p = await api(tokens.owner, 'POST', '/products', { name: '原子 পণ্য', purchase_price: 1000, selling_price: 2000, opening_stock: 5 })
+    const pid = p.json.id as string
+    // product's own opening-stock movement now exists — re-baseline AFTER it
+    before.movs = (world.db.prepare('SELECT COUNT(*) c FROM stock_movements').get() as { c: number }).c
+    const stockBefore = ((await api(tokens.owner, 'GET', `/products/${pid}`)).json.product as { stock: number }).stock
+
+    // make postEntry explode (fires INSIDE the sale transaction, after sale+stock writes)
+    const spy = vi.spyOn(accountsMod, 'postEntry').mockImplementationOnce(() => { throw new Error('boom-mid-txn') })
+    const r = await api(tokens.owner, 'POST', '/sales', {
+      items: [{ product_id: pid, qty: 2, unit_price: 2000 }],
+      payments: [{ account_id: world.cashId, amount: 4000, method: 'cash' }]
+    })
+    spy.mockRestore()
+    expect(r.status).toBe(500)
+
+    const after = {
+      sales: (world.db.prepare('SELECT COUNT(*) c FROM sales').get() as { c: number }).c,
+      cash: bal(world.cashId),
+      movs: (world.db.prepare('SELECT COUNT(*) c FROM stock_movements').get() as { c: number }).c
+    }
+    expect(after.sales).toBe(before.sales)      // no orphan sale
+    expect(after.movs).toBe(before.movs)        // no orphan movement
+    expect(bal(world.cashId)).toBe(before.cash) // no orphan ledger post
+    expect(((await api(tokens.owner, 'GET', `/products/${pid}`)).json.product as { stock: number }).stock).toBe(stockBefore)
+    // and the operation succeeds fine once the failure is removed
+    const ok = await api(tokens.owner, 'POST', '/sales', {
+      items: [{ product_id: pid, qty: 2, unit_price: 2000 }],
+      payments: [{ account_id: world.cashId, amount: 4000, method: 'cash' }]
+    })
+    expect(ok.status).toBe(200)
+    expect(bal(world.cashId)).toBe((world.db.prepare('SELECT COALESCE(SUM(amount),0) s FROM account_txns WHERE account_id=?').get(world.cashId) as { s: number }).s)
+  })
+})
+
+/* ═══════════ N · MONITOR WRITE-MATRIX — every mutation endpoint stays closed ═══════════ */
+describe('N · phone monitor cannot mutate anything', () => {
+  it('all mutation endpoints refuse the monitor token', async () => {
+    core.setMonitorKey('mqm_matrix')
+    const H = { 'content-type': 'application/json', authorization: 'Bearer mqm_matrix' }
+    const attempts: Array<[string, string, unknown]> = [
+      ['POST', '/sales', { items: [] }],
+      ['POST', '/purchases', { items: [] }],
+      ['POST', '/products', { name: 'x', purchase_price: 1, selling_price: 2 }],
+      ['PATCH', '/products/ANY', { name: 'x' }],
+      ['POST', '/products/ANY/adjust', { deltaQty: 1, reason: 'x' }],
+      ['DELETE', '/products/ANY', null],
+      ['POST', '/customers', { name: 'x' }],
+      ['PATCH', '/customers/ANY', { name: 'x' }],
+      ['POST', '/suppliers', { name: 'x' }],
+      ['PATCH', '/suppliers/ANY', { name: 'x' }],
+      ['POST', '/expenses', { title: 'x', amount: 1, account_id: 'x' }],
+      ['POST', '/transfers', { from: 'x', to: 'y', amount: 1 }],
+      ['POST', '/mfs', {}],
+      ['POST', '/returns', {}],
+      ['POST', '/staff/users', { name: 'x', username: 'zz9', password: 'pass123' }],
+      ['PATCH', '/settings', { values: {} }],
+      ['PATCH', '/businesses/ANY', { name: 'x' }],
+      ['POST', '/backups', { note: 'x' }],
+      ['POST', '/auth/business', { business_id: 'x' }]
+    ]
+    for (const [method, url, body] of attempts) {
+      const res = await fetch(`${base}${url}`, { method, headers: H, body: body === null ? undefined : JSON.stringify(body) })
+      expect(res.status, `${method} ${url} must not accept the monitor token`).toBe(401)
+    }
+    core.setMonitorKey(null)
+  })
+})
+
+/* ═══════════ O · HISTORICAL IMMUTABILITY — metadata edits never rewrite history ═══════════ */
+describe('O · historical immutability', () => {
+  it('renaming/recategorizing a product leaves past invoices intact', async () => {
+    const p = await api(tokens.owner, 'POST', '/products', { name: '旧 নাম', purchase_price: 1000, selling_price: 2000, opening_stock: 10 })
+    const pid = p.json.id as string
+    const sale = await api(tokens.owner, 'POST', '/sales', {
+      items: [{ product_id: pid, qty: 1, unit_price: 2000 }],
+      payments: [{ account_id: world.cashId, amount: 2000, method: 'cash' }]
+    })
+    const sid = (sale.json.sale as { id: string }).id
+    await api(tokens.owner, 'PATCH', `/products/${pid}`, { name: 'নতুন নাম', purchase_price: 9000, selling_price: 9000 })
+    const det = await api(tokens.owner, 'GET', `/sales/${sid}`)
+    const items = det.json.items as Array<{ name: string; unit_price: number }>
+    expect(items[0].unit_price).toBe(2000)           // price frozen at sale time
+    expect(items.length).toBe(1)                     // invoice intact
+    // stock movement history still references the product
+    const mov = await api(tokens.owner, 'GET', `/inventory/movements?product_id=${pid}&pageSize=50`)
+    expect((mov.json.rows as unknown[]).length).toBeGreaterThanOrEqual(2) // opening + sale
+  })
+})
+
+/* ═══════════ P · IMPORT EDGE CASES — duplicates refused, big batches OK ═══════════ */
+describe('P · import edge cases', () => {
+  it('duplicate barcode inside one batch is rejected', async () => {
+    const csv = [
+      'name,sku,barcode,category,brand,unit,purchase_price,selling_price,opening_stock,min_stock',
+      'ডুপ্লিকেট এ,DP-A,880777000001,,,পিস,1000,1500,10,2',
+      'ডুপ্লিকেট বি,DP-B,880777000001,,,পিস,1000,1500,10,2'
+    ].join('\n')
+    const v = await api(tokens.owner, 'POST', '/import/products/validate', { csv })
+    const bad = (v.json.rows as Array<{ errors: string[] }>).filter((r) => r.errors.length > 0)
+    expect(bad.length).toBeGreaterThanOrEqual(1)     // at least one row flagged duplicate
+    const commit = await api(tokens.owner, 'POST', '/import/products/commit', { rows: v.json.rows })
+    expect(commit.status).toBe(400)
+  })
+
+  it('a 500-row valid batch commits cleanly', async () => {
+    const before = (await api(tokens.owner, 'GET', '/products?page=1&pageSize=1')).json.total as number
+    const rows = Array.from({ length: 500 }, (_, i) =>
+      ({ line: i + 1, errors: [], data: { name: `বাল্ক পণ্য ${i + 1}`, sku: `BLK-${i + 1}`, barcode: `885555${String(i).padStart(7, '0')}`, category: 'বাল্ক', brand: '', unit: 'পিস', purchase_price: '1000', selling_price: '1500', opening_stock: '5', min_stock: '1', supplier: '' } })
+    )
+    const t0 = Date.now()
+    const commit = await api(tokens.owner, 'POST', '/import/products/commit', { rows })
+    const dt = Date.now() - t0
+    expect(commit.status).toBe(200)
+    expect(commit.json.imported).toBe(500)
+    console.log(`  ⏱ 500-row import: ${dt}ms`)
+    const after = (await api(tokens.owner, 'GET', '/products?page=1&pageSize=1')).json.total as number
+    expect(after - before).toBe(500)
+  }, 60_000)
 })

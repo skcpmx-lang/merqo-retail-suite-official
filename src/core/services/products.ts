@@ -70,34 +70,36 @@ function dupCheck(db: DB, businessId: string, selfId: string | null, sku?: strin
 }
 
 export function createProduct(db: DB, ctx: AuditCtx, businessId: string, input: ProductInput): ProductRow {
-  if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'পণ্যের নাম দিন।')
-  dupCheck(db, businessId, null, input.sku?.trim() || undefined, input.barcode?.trim() || undefined)
-  const id = newId()
-  const t = now()
-  const openingQty = roundQty(input.track_stock === false ? 0 : input.opening_stock ?? 0)
-  const openingCost = input.opening_cost ?? input.purchase_price ?? 0
-  const wac = openingQty > 0 ? openingCost : input.purchase_price ?? 0
-  db.prepare(
-    `INSERT INTO products (id, business_id, name, sku, barcode, category_id, brand_id, unit_id, supplier_id,
-      purchase_price, selling_price, wholesale_price, min_selling_price, tax_rate_bps, track_stock, min_stock,
-      reorder_level, description, image_data, expiry_date, batch_no, stock, wac, status, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`
-  ).run(
-    id, businessId, input.name.trim(), input.sku?.trim() || null, input.barcode?.trim() || null,
-    input.category_id || null, input.brand_id || null, input.unit_id || null, input.supplier_id || null,
-    input.purchase_price ?? 0, input.selling_price ?? 0, input.wholesale_price ?? null, input.min_selling_price ?? null,
-    input.tax_rate_bps ?? 0, input.track_stock === false ? 0 : 1, input.min_stock ?? 0, input.reorder_level ?? 0,
-    input.description ?? null, input.image_data ?? null, input.expiry_date ?? null, input.batch_no ?? null,
-    openingQty, wac, t, t
-  )
-  if (openingQty > 0) {
+  return db.transaction(() => {
+    if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'পণ্যের নাম দিন।')
+    dupCheck(db, businessId, null, input.sku?.trim() || undefined, input.barcode?.trim() || undefined)
+    const id = newId()
+    const t = now()
+    const openingQty = roundQty(input.track_stock === false ? 0 : input.opening_stock ?? 0)
+    const openingCost = input.opening_cost ?? input.purchase_price ?? 0
+    const wac = openingQty > 0 ? openingCost : input.purchase_price ?? 0
     db.prepare(
-      `INSERT INTO stock_movements (id, business_id, product_id, qty, type, balance_after, cost_at_move, reason, user_id, created_at)
-       VALUES (?,?,?,?, 'opening', ?, ?, 'শুরুর স্টক', ?, ?)`
-    ).run(newId(), businessId, id, openingQty, openingQty, wac, ctx.userId ?? null, t)
-  }
-  audit(db, { ...ctx, businessId }, 'product.create', 'product', id, null, { name: input.name, sku: input.sku, selling_price: input.selling_price, opening_stock: openingQty })
-  return getProduct(db, businessId, id)
+      `INSERT INTO products (id, business_id, name, sku, barcode, category_id, brand_id, unit_id, supplier_id,
+        purchase_price, selling_price, wholesale_price, min_selling_price, tax_rate_bps, track_stock, min_stock,
+        reorder_level, description, image_data, expiry_date, batch_no, stock, wac, status, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`
+    ).run(
+      id, businessId, input.name.trim(), input.sku?.trim() || null, input.barcode?.trim() || null,
+      input.category_id || null, input.brand_id || null, input.unit_id || null, input.supplier_id || null,
+      input.purchase_price ?? 0, input.selling_price ?? 0, input.wholesale_price ?? null, input.min_selling_price ?? null,
+      input.tax_rate_bps ?? 0, input.track_stock === false ? 0 : 1, input.min_stock ?? 0, input.reorder_level ?? 0,
+      input.description ?? null, input.image_data ?? null, input.expiry_date ?? null, input.batch_no ?? null,
+      openingQty, wac, t, t
+    )
+    if (openingQty > 0) {
+      db.prepare(
+        `INSERT INTO stock_movements (id, business_id, product_id, qty, type, balance_after, cost_at_move, reason, user_id, created_at)
+         VALUES (?,?,?,?, 'opening', ?, ?, 'শুরুর স্টক', ?, ?)`
+      ).run(newId(), businessId, id, openingQty, openingQty, wac, ctx.userId ?? null, t)
+    }
+    audit(db, { ...ctx, businessId }, 'product.create', 'product', id, null, { name: input.name, sku: input.sku, selling_price: input.selling_price, opening_stock: openingQty })
+    return getProduct(db, businessId, id)
+  })()
 }
 
 export function updateProduct(db: DB, ctx: AuditCtx, businessId: string, id: string, patch: Partial<ProductInput> & { status?: 'active' | 'archived' }): ProductRow {
