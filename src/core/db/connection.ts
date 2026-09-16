@@ -32,7 +32,8 @@ export function openDatabase(file: string): DB {
 }
 
 export function migrate(db: DB): void {
-  const row = db.prepare(`SELECT value FROM meta WHERE key='schema_version'`).get() as { value: string } | undefined
+  const hasMeta = !!db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='meta'`).get()
+  const row = hasMeta ? (db.prepare(`SELECT value FROM meta WHERE key='schema_version'`).get() as { value: string } | undefined) : undefined
   const current = row ? Number(row.value) : 0
   if (current > SCHEMA_VERSION) {
     throw new Error(`DATABASE_NEWER: ডেটাবেস সংস্করণ (${current}) এই অ্যাপের চেয়ে নতুন (${SCHEMA_VERSION})।`)

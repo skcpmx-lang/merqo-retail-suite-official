@@ -81,7 +81,7 @@ export function createProduct(db: DB, ctx: AuditCtx, businessId: string, input: 
     `INSERT INTO products (id, business_id, name, sku, barcode, category_id, brand_id, unit_id, supplier_id,
       purchase_price, selling_price, wholesale_price, min_selling_price, tax_rate_bps, track_stock, min_stock,
       reorder_level, description, image_data, expiry_date, batch_no, stock, wac, status, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`
   ).run(
     id, businessId, input.name.trim(), input.sku?.trim() || null, input.barcode?.trim() || null,
     input.category_id || null, input.brand_id || null, input.unit_id || null, input.supplier_id || null,

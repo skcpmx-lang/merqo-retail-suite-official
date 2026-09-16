@@ -54,7 +54,8 @@ export function postEntry(
 
 export class CoreError extends Error {
   constructor(public code: string, public bn: string, public status = 400) {
-    super(code)
+    super(bn)
+    this.name = 'CoreError'
   }
 }
 

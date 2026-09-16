@@ -37,7 +37,7 @@ export function createCustomer(db: DB, ctx: AuditCtx, businessId: string, input:
   const id = newId()
   db.prepare(
     `INSERT INTO customers (id, business_id, code, name, phone, address, email, note, opening_due, receivable, status, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,'active',?)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,'active',?)`
   ).run(
     id, businessId, input.code?.trim() || null, input.name.trim(), input.phone?.trim() || null,
     input.address?.trim() || null, input.email?.trim() || null, input.note ?? null,
