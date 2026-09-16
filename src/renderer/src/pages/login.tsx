@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession, connectToCore } from '@/state/session'
 import { useToast } from '@/state/toast'
-import { api, pingServer } from '@/api/client'
+import { api, getBaseUrl, pingServer } from '@/api/client'
 import { t } from '@/i18n/bn'
 import { Field, Spinner } from '@/ui/components'
 
@@ -20,6 +20,18 @@ export function Login() {
   const [serverOk, setServerOk] = useState<null | boolean>(null)
 
   useEffect(() => { document.title = t('login') + ' — MERQO Retail Suite' }, [])
+
+  // first run: no users yet → the setup wizard IS the entry point
+  useEffect(() => {
+    let dead = false
+    void (async () => {
+      try {
+        const meta = await pingServer(getBaseUrl())
+        if (!dead && meta.ok && meta.initialized === false) navigate('/setup', { replace: true })
+      } catch { /* server unreachable — stay on login */ }
+    })()
+    return () => { dead = true }
+  }, [navigate])
 
   const applyServer = async () => {
     if (!serverAddr.trim()) return

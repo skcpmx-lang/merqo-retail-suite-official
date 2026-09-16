@@ -34,9 +34,10 @@ jobs:
           npx esbuild scripts/qa-server.ts --bundle --platform=node --format=cjs \
             --external:better-sqlite3 --external:express --outfile=out/qa/server.cjs
           node out/qa/server.cjs &
+          MQ_QA_FRESH=1 MQ_QA_PORT=8081 MQ_QA_DATA=out/qa-data-fresh node out/qa/server.cjs &
           sleep 2
           bash scripts/qa-seed.sh
-          npx vitest run --config tests/vitest.config.ts tests/ui-smoke.test.tsx
+          npx vitest run --config tests/vitest.config.ts tests/ui-smoke.test.tsx tests/firstrun-ui.test.tsx
 
   windows-installer:
     runs-on: windows-latest

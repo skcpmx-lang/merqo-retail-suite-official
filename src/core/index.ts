@@ -1,8 +1,10 @@
+import crypto from 'node:crypto'
 import express from 'express'
 import type { DB } from './db/connection'
 import { buildRoutes, setDbRef } from './api/routes'
 import { authMiddleware, errorHandler } from './api/http'
 import { sha256 } from './auth'
+import { dashboard } from './services/dashboard'
 
 export const DEFAULT_PORT = 47612
 
@@ -41,10 +43,18 @@ export function startCore(opts: CoreOptions): CoreHandle {
   let monitorKey: string | null = null
 
   // Owner monitor: token-gated, strictly read-only JSON.
+  // The phone sends the RAW key; only its sha256 is stored/compared (timing-safe).
   app.get('/api/monitor/data', (_req, res) => {
     if (!monitorKey) { res.status(404).json({ error: 'DISABLED' }); return }
-    const auth = _req.headers['authorization']
-    if (auth !== `Bearer ${monitorKey}`) { res.status(401).json({ error: 'UNAUTHORIZED' }); return }
+    const auth = String(_req.headers['authorization'] ?? '')
+    const provided = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    let authorized = false
+    if (provided.length > 0) {
+      const a = Buffer.from(sha256(provided))
+      const b = Buffer.from(monitorKey)
+      authorized = a.length === b.length && crypto.timingSafeEqual(a, b)
+    }
+    if (!authorized) { res.status(401).json({ error: 'UNAUTHORIZED' }); return }
     const bid = String(_req.query.business ?? '')
     const bizRow = opts.db.prepare(`SELECT id, name FROM businesses WHERE id=? AND status='active'`).get(bid) as { id: string; name: string } | undefined
     if (!bizRow) { res.status(400).json({ error: 'BUSINESS' }); return }
@@ -137,7 +147,6 @@ load();setInterval(load,30000);
 
 /* Strictly read-only monitor payload (no mutations, no PII beyond names). */
 function monitorData(db: DB, businessId: string, businessName: string) {
-  const { dashboard } = require('./services/dashboard') as typeof import('./services/dashboard')
   const d = dashboard(db, businessId)
   return {
     business: { id: businessId, name: businessName },

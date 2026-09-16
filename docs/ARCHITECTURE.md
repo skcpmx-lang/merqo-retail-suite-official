@@ -205,10 +205,15 @@ Executed in the build sandbox against the completed codebase:
 | --- | --- | --- |
 | Typecheck (main+core+tests) | `npx tsc --noEmit -p tsconfig.json` | 0 errors |
 | Typecheck (renderer) | `npx tsc --noEmit -p src/renderer/tsconfig.json` | 0 errors |
-| Core + API smoke tests | `npx vitest run --config tests/vitest.config.ts` | 30/30 pass |
+| Core + API smoke + hardening + perf tests | `npx vitest run --config tests/vitest.config.ts` | 79/79 pass |
 | Production build | `npm run build` (electron-vite) | out/{main,preload,renderer} |
 | API smoke over real HTTP | `tests/api-smoke.test.ts` (boots core on ephemeral port) | 9/9 scenarios |
 | Full UI smoke — 30 routes | `tests/ui-smoke.test.tsx` (real React app in jsdom vs live QA server) | 30/30 mounts, 0 render errors |
+| Release hardening suite | `tests/hardening.test.ts` — authz matrix, manager tier, business isolation, 16 reconciliation scenarios, inventory equation, returns guards, import rollback, backup round-trip, MFS config, concurrency, first-run, phone monitor | 39/39 pass |
+| Performance gate | `tests/perf.test.ts` — 1,000 products / 1,000 customers / 5,000 sales | dashboard 877 ms; all other queries ≤ 40 ms |
+| First-run UI | `tests/firstrun-ui.test.tsx` — fresh install lands on setup wizard, no demo credentials | pass |
+| Production bundle purity | grep of `out/` for demo data / credentials | clean |
+| npm dependency audit | `npm audit` | 0 vulnerabilities |
 | Number consistency | dashboard vs `reports/pnl` vs account ledger vs `reports/receivables` | exact match (one source of truth) |
 | Windows installer | `npm run dist` on GitHub Actions (`windows-latest`) | CI workflow `.github/workflows/ci.yml` |
 

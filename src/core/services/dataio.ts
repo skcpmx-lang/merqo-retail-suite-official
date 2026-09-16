@@ -4,7 +4,7 @@ import { newId, now } from '../ids'
 import { roundQty, takaToPoisha } from '../money'
 import { CoreError } from './accounts'
 import { audit, type AuditCtx } from './audit'
-import type { ProductInput } from './products'
+import { createProduct, type ProductInput } from './products'
 
 /* ───────────────────────── CSV export (Excel-safe, BOM for Bengali) ───────────────────────── */
 
@@ -117,8 +117,6 @@ export function commitProductImport(db: DB, ctx: AuditCtx, businessId: string, r
   }
 
   const apply = db.transaction(() => {
-    // Lazy import of products service to avoid a cycle at module init.
-    const { createProduct } = require('./products') as typeof import('./products')
     for (const r of rows) {
       const d = r.data
       const input: ProductInput = {

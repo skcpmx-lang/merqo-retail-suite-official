@@ -41,7 +41,7 @@ export function docShell(inner: string, paper: string, title: string): string {
   return `<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>${title}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Hind Siliguri','Noto Sans Bengali','Inter',sans-serif; color:#101828; font-size: 13px; line-height:1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: 'Hind Siliguri','Noto Sans Bengali','Nirmala UI','Vrinda','Inter',sans-serif; color:#101828; font-size: 13px; line-height:1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   ${PAGE_CSS[paper] ?? PAGE_CSS.A4}
   .doc { margin: 0 auto; }
   table { width:100%; border-collapse: collapse; }

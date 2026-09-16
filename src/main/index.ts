@@ -182,6 +182,14 @@ function createWindow(): void {
     if (url.startsWith('http')) shell.openExternal(url)
     return { action: 'deny' }
   })
+  // the renderer is an SPA served from our own build — never let it navigate away
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    const appUrl = DEV_URL ?? 'file://'
+    if (!url.startsWith(appUrl)) {
+      e.preventDefault()
+      if (url.startsWith('http')) shell.openExternal(url)
+    }
+  })
 
   if (DEV_URL) mainWindow.loadURL(DEV_URL)
   else mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
