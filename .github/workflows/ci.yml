@@ -62,6 +62,39 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 0
 
+      - name: Record installer name + SHA256
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release/*.exe | Select-Object -First 1
+          $sha = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          $info = "file=$($exe.Name)`nsize=$($exe.Length)`nsha256=$sha`ncommit=$env:GITHUB_SHA"
+          $info | Out-File -Encoding utf8 release/installer-info.txt
+          Write-Host $info
+          Add-Content $env:GITHUB_STEP_SUMMARY "`n``````
+          $info
+          ``````"
+
+      - name: Upload checksum manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-info
+          path: release/installer-info.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish installer to GitHub release (v1.0.0-rc)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v1.0.0-rc"
+          $exe = Get-ChildItem release/*.exe | Select-Object -First 1
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --prerelease --title "MERQO Retail Suite 1.0.0 (Release Candidate)" --notes "Windows installer built by CI from commit $env:GITHUB_SHA. Verify the SHA256 in the installer-info artifact before installing."
+          }
+          gh release upload $tag $exe.FullName --repo $env:GITHUB_REPOSITORY --clobber
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
