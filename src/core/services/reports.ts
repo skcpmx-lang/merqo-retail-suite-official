@@ -17,8 +17,11 @@ export function profitLoss(db: DB, businessId: string, r: Range) {
     .get(businessId, r.from, r.to) as { amount: number; cogs: number; count: number }
 
   const expenses = db
-    .prepare(`SELECT COALESCE(SUM(amount),0) amount FROM expenses WHERE business_id=? AND status='approved' AND date>=? AND date<=?`)
-    .get(businessId, r.from, r.to) as { amount: number }
+    .prepare(`SELECT COALESCE(ec.name,'অন্যান্য') category, SUM(e.amount) amount FROM expenses e
+              LEFT JOIN expense_categories ec ON ec.id=e.category_id
+              WHERE e.business_id=? AND e.status='approved' AND e.date>=? AND e.date<=?
+              GROUP BY ec.name ORDER BY amount DESC`)
+    .all(businessId, r.from, r.to) as Array<{ category: string; amount: number }>
 
   const mfs = db
     .prepare(
@@ -27,17 +30,35 @@ export function profitLoss(db: DB, businessId: string, r: Range) {
     )
     .get(businessId, r.from, r.to) as { commission: number; charges: number }
 
+  const purchases = db
+    .prepare(`SELECT COALESCE(SUM(total),0) total FROM purchases WHERE business_id=? AND status<>'voided' AND date>=? AND date<=?`)
+    .get(businessId, r.from, r.to) as { total: number }
+
+  const dues = db
+    .prepare(`SELECT (SELECT COALESCE(SUM(receivable),0) FROM customers WHERE business_id=? AND status='active') receivable,
+                     (SELECT COALESCE(SUM(payable),0) FROM suppliers WHERE business_id=? AND status='active') payable`)
+    .get(businessId, businessId) as { receivable: number; payable: number }
+
+  const cf = cashflow(db, businessId, r)
+
+  const expensesTotal = expenses.reduce((a, e) => a + e.amount, 0)
   const revenue = sales.revenue - rets.amount
   const cogs = sales.cogs - rets.cogs
   const grossProfit = revenue - cogs
   const mfsIncome = mfs.commission + mfs.charges
-  const netProfit = grossProfit + mfsIncome - expenses.amount
+  const netProfit = grossProfit + mfsIncome - expensesTotal
   return {
+    from: r.from, to: r.to,
     revenue, cogs, gross_profit: grossProfit,
-    discounts: sales.discounts, tax: sales.tax, sales_count: sales.count,
-    returns_amount: rets.amount, returns_count: rets.count,
-    mfs_income: mfsIncome, mfs_commission: mfs.commission, mfs_charges: mfs.charges,
-    expenses: expenses.amount, net_profit: netProfit,
+    discounts: sales.discounts, vat: sales.tax, sales_count: sales.count,
+    returns: rets.amount, returns_amount: rets.amount, returns_count: rets.count,
+    mfs_income: { commission: mfs.commission, service_charge: mfs.charges, total: mfsIncome },
+    mfs_commission: mfs.commission, mfs_charges: mfs.charges,
+    expenses, expenses_total: expensesTotal,
+    purchases: purchases.total,
+    receivable: dues.receivable, payable: dues.payable,
+    cashflow: { inflow: cf.inflow, outflow: cf.outflow, net: cf.net },
+    net_profit: netProfit,
     margin: revenue > 0 ? grossProfit / revenue : 0
   }
 }

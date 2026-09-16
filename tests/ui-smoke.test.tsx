@@ -96,6 +96,12 @@ async function screenOk(route: string): Promise<string> {
     const msg = String(a[0] ?? '')
     if (!msg.includes('not wrapped in act') && !msg.includes('Warning:')) consoleErrors.push(msg)
   })
+  // React 19 logs render errors through the ORIGINAL console (bypassing spies),
+  // and rethrows uncaught — so also capture window-level failures.
+  const onErr = (e: ErrorEvent) => consoleErrors.push(`window.error: ${e.message}`)
+  const onRej = (e: PromiseRejectionEvent) => consoleErrors.push(`unhandled: ${String(e.reason).slice(0, 300)}`)
+  window.addEventListener('error', onErr)
+  window.addEventListener('unhandledrejection', onRej)
   try {
     const { container } = mount(route)
     await waitFor(() => {
@@ -109,6 +115,7 @@ async function screenOk(route: string): Promise<string> {
       const { getBaseUrl } = await import('../src/renderer/src/api/client')
       console.log(`[ui-smoke] ${route} → LOGIN PAGE shown (base=${getBaseUrl()})`)
     }
+    expect(txt.length).toBeGreaterThan(80)           // still mounted after settle (no crash-unmount)
     expect(txt).not.toContain('চালু হচ্ছে')          // session must be ready
     expect(txt).not.toContain('লোড করা যায়নি')      // no query may hard-fail
     expect(txt).not.toContain('অনুমতি নেই')          // owner sees everything
@@ -116,6 +123,8 @@ async function screenOk(route: string): Promise<string> {
     return txt
   } finally {
     spy.mockRestore()
+    window.removeEventListener('error', onErr)
+    window.removeEventListener('unhandledrejection', onRej)
     cleanup()
   }
 }

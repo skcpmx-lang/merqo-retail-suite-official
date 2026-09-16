@@ -149,6 +149,8 @@ describe('api smoke — the routes the UI lives on', () => {
 
   it('dashboard + reports + mfs + settings + audit shapes', async () => {
     const dash = await api('GET', '/dashboard')
+    if (dash.status !== 200) console.log('[smoke] /dashboard', dash.status, JSON.stringify(dash.json))
+    expect(dash.status).toBe(200)
     expect(dash.json.today).toHaveProperty('gross_profit')
     expect(dash.json.dues).toHaveProperty('receivable')
     expect(dash.json.position).toHaveProperty('cash')

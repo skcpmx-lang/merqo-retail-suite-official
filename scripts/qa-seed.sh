@@ -76,8 +76,13 @@ SUP1_DUE=$(get "/suppliers/$S1" | jq -r .payable)
 post "/suppliers/$S1/pay" "{\"amount\": 100000, \"account_id\": \"$BANK\", \"method\": \"bank\"}" | jq -c '{voucher_no, payable_after}'
 
 echo "── expenses / transfer / MFS"
-post /expenses "{\"title\": \"দোকান ভাড়া (সেপ্টেম্বর)\", \"amount\": 1500000, \"account_id\": \"$CASH\"}" | jq -c '{no}'
-post /expenses "{\"title\": \"বিদ্যুৎ বিল\", \"amount\": 480000, \"account_id\": \"$CASH\"}" | jq -c '{no}'
+# the business ships with default expense categories — use those
+CATS=$(get /expense-categories)
+EC1=$(echo "$CATS" | jq -r '.rows[] | select(.name=="দোকান ভাড়া") | .id')
+EC2=$(echo "$CATS" | jq -r '.rows[] | select(.name=="পরিবহন") | .id')
+post /expenses "{\"title\": \"দোকান ভাড়া (সেপ্টেম্বর)\", \"category_id\": \"$EC1\", \"amount\": 1500000, \"account_id\": \"$CASH\"}" | jq -c '{no}'
+post /expenses "{\"title\": \"বিদ্যুৎ বিল\", \"category_id\": \"$EC1\", \"amount\": 480000, \"account_id\": \"$CASH\"}" | jq -c '{no}'
+post /expenses "{\"title\": \"পাইকারি মালামাল পরিবহন\", \"category_id\": \"$EC2\", \"amount\": 250000, \"account_id\": \"$CASH\"}" | jq -c '{no}'
 post /transfers "{\"from\": \"$CASH\", \"to\": \"$BANK\", \"amount\": 500000, \"fee\": 0, \"note\": \"নগদ ব্যাংকে জমা\"}" | jq -c '.ok'
 post /mfs "{\"provider\": \"bkash\", \"txn_type\": \"cash_in\", \"account_id\": \"$BKSH\", \"counter_account_id\": \"$CASH\", \"amount\": 500000, \"service_charge\": 500, \"customer_phone\": \"01712345678\"}" | jq -c '{id}'
 post /mfs "{\"provider\": \"nagad\", \"txn_type\": \"send_money\", \"account_id\": \"$CASH\", \"counter_account_id\": \"$BKSH\", \"amount\": 100000, \"commission\": 0, \"service_charge\": 300}" | jq -c '{id}'

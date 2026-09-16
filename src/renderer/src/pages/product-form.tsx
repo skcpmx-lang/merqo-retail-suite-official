@@ -43,11 +43,12 @@ export function ProductForm({ mode }: { mode: 'new' | 'edit' }) {
   const { data: catalog } = useQuery({ queryKey: ['catalog'], queryFn: () => api.get<{ categories: Array<{ id: string; name: string }>; brands: Array<{ id: string; name: string }>; units: Array<{ id: string; name: string; short: string }> }>('/catalog') })
 
   const isEdit = mode === 'edit'
-  const { data: existing, isLoading, error } = useQuery({
+  const { data: prodRes, isLoading, error } = useQuery({
     queryKey: ['product', id],
-    queryFn: () => api.get<ProdFull>(`/products/${id}`),
+    queryFn: () => api.get<{ product: ProdFull }>(`/products/${id}`),
     enabled: isEdit && !!id
   })
+  const existing = prodRes?.product
   const { data: movements } = useQuery({
     queryKey: ['product-movement', id],
     queryFn: () => api.get<{ rows: Array<{ id: string; created_at: number; type: string; ref_type: string | null; qty: number; balance_after: number; reason: string | null }> }>('/inventory/movements', { product_id: id, pageSize: 50 }),
