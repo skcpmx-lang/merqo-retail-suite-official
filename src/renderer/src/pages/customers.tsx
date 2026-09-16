@@ -72,7 +72,7 @@ export function CustomersList() {
               <Banknote size={13} /> {t('collect_due')}
             </button>
           ) : null}
-          <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
+          <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="আরও বিকল্প" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
             {can(PERMS.CUSTOMERS_MANAGE) ? <MenuItem icon={<Pencil size={14} />} onClick={() => setEditFor(r)}>{t('edit')}</MenuItem> : null}
             {can(PERMS.DUES_COLLECT) && r.receivable > 0 ? <MenuItem icon={<Banknote size={14} />} onClick={() => setCollectFor(r)}>{t('collect_due')}</MenuItem> : null}
             <div className="menu-sep" />

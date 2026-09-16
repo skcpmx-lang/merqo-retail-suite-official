@@ -62,7 +62,7 @@ export function Expenses() {
     {
       key: 'act', header: '', width: 60,
       render: (r: ExpRow) => can(PERMS.EXPENSES_DELETE) ? (
-        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
+        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="আরও বিকল্প" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
           <MenuItem icon={<Ban size={14} />} danger onClick={() => setVoidFor(r)}>বাতিল করুন</MenuItem>
         </Menu>
       ) : null

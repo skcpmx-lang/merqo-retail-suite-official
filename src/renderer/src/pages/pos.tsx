@@ -321,7 +321,7 @@ export function POS() {
               <button className="btn btn-secondary btn-sm" onClick={() => { setCustSearch(''); setCustOpen(true) }}>
                 <Tag size={13} /> {t('pos_select_customer')}
               </button>
-              <button className="btn btn-ghost btn-sm btn-icon" title={t('pos_add_customer')} onClick={() => setNewCustOpen(true)}>
+              <button className="btn btn-ghost btn-sm btn-icon" aria-label={t('pos_add_customer')} title={t('pos_add_customer')} onClick={() => setNewCustOpen(true)}>
                 <UserPlus size={15} />
               </button>
             </>

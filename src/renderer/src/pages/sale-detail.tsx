@@ -67,7 +67,7 @@ export function SaleDetailPage() {
   return (
     <div className="page">
       <PageHeader
-        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/sales')}><ArrowLeft size={16} /></button>{t('invoice')} <span className="num">{s.invoice_no}</span></span>}
+        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" aria-label="ফিরে যান" onClick={() => navigate('/sales')}><ArrowLeft size={16} /></button>{t('invoice')} <span className="num">{s.invoice_no}</span></span>}
         sub={`${fdatetime(s.date)} · ${methodBn(s.payment_method)} · ${s.user_name ?? ''}`}
         actions={
           <>
@@ -80,7 +80,7 @@ export function SaleDetailPage() {
                 {can(PERMS.SALES_VOID) ? <button className="btn btn-danger" onClick={() => setVoidOpen(true)}><Ban size={15} /> {t('void_invoice')}</button> : null}
               </>
             ) : null}
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
             <button className="btn btn-primary" onClick={() => doPrint()}><Printer size={15} /> {t('print_btn')}</button>
           </>
         }

@@ -185,7 +185,7 @@ export function PurchaseNew() {
                 onFocus={(e) => e.target.select()}
               />
               <div className="cart-line-total num">{money(l.qty * l.unit_cost)}</div>
-              <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setQty(l.product_id, 0)}><Trash2 size={13} /></button>
+              <button className="btn btn-ghost btn-sm btn-icon" aria-label="মুছুন" onClick={() => setQty(l.product_id, 0)}><Trash2 size={13} /></button>
             </div>
           ))}
         </div>

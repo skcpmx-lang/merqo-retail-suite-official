@@ -100,11 +100,11 @@ export function SupplierDetailPage() {
   return (
     <div className="page">
       <PageHeader
-        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/suppliers')}><ArrowLeft size={16} /></button>{s.name}</span>}
+        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" aria-label="ফিরে যান" onClick={() => navigate('/suppliers')}><ArrowLeft size={16} /></button>{s.name}</span>}
         sub={[s.phone, s.address].filter(Boolean).join(' · ') || '—'}
         actions={
           <>
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => printStatement(true)}><FileDown size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => printStatement(true)}><FileDown size={16} /></button>
             <button className="btn btn-secondary" onClick={() => printStatement()}><Printer size={15} /> স্টেটমেন্ট</button>
             {can(PERMS.SUPPLIERS_MANAGE) ? <button className="btn btn-secondary" onClick={() => setEditOpen(true)}><Pencil size={15} /> {t('edit')}</button> : null}
           </>

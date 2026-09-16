@@ -84,8 +84,8 @@ export function Documents() {
       key: 'act', header: '', width: 100,
       render: (r) => can(PERMS.INVOICES_PRINT) ? (
         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost btn-sm btn-icon" title="PDF" onClick={() => void reprintInvoice(r, true)}><FileDown size={14} /></button>
-          <button className="btn btn-secondary btn-sm btn-icon" title={t('print_btn')} onClick={() => void reprintInvoice(r)}><Printer size={14} /></button>
+          <button aria-label="PDF" className="btn btn-ghost btn-sm btn-icon" title="PDF" onClick={() => void reprintInvoice(r, true)}><FileDown size={14} /></button>
+          <button className="btn btn-secondary btn-sm btn-icon" aria-label={t('print_btn')} title={t('print_btn')} onClick={() => void reprintInvoice(r)}><Printer size={14} /></button>
         </div>
       ) : null
     }
@@ -103,8 +103,8 @@ export function Documents() {
       key: 'act', header: '', width: 100,
       render: (r) => can(PERMS.INVOICES_PRINT) ? (
         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-ghost btn-sm btn-icon" title="PDF" onClick={() => void reprintPurchase(r, true)}><FileDown size={14} /></button>
-          <button className="btn btn-secondary btn-sm btn-icon" title={t('print_btn')} onClick={() => void reprintPurchase(r)}><Printer size={14} /></button>
+          <button aria-label="PDF" className="btn btn-ghost btn-sm btn-icon" title="PDF" onClick={() => void reprintPurchase(r, true)}><FileDown size={14} /></button>
+          <button className="btn btn-secondary btn-sm btn-icon" aria-label={t('print_btn')} title={t('print_btn')} onClick={() => void reprintPurchase(r)}><Printer size={14} /></button>
         </div>
       ) : null
     }

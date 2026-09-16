@@ -43,7 +43,7 @@ jobs:
     runs-on: windows-latest
     needs: verify
     # automatic on main; also builds on the release-candidate branch for validation
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/arena/01a0abb2-merqo-retail-suite-official' || github.event_name == 'workflow_dispatch'
+    if: github.ref == 'refs/heads/main' || github.head_ref == 'arena/01a0abb2-merqo-retail-suite-official' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 

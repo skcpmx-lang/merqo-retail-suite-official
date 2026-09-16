@@ -124,7 +124,7 @@ export function Inventory() {
         sub={t('inventory_sub')}
         actions={
           <>
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => print(true)}><FileDown size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => print(true)}><FileDown size={16} /></button>
             <button className="btn btn-secondary" onClick={() => print()}><Printer size={15} /> {t('print_btn')}</button>
           </>
         }

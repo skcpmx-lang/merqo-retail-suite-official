@@ -69,7 +69,7 @@ export function PurchaseDetailPage() {
   return (
     <div className="page">
       <PageHeader
-        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/purchases')}><ArrowLeft size={16} /></button>{t('purchase')} <span className="num">{p.ref_no ?? '—'}</span></span>}
+        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" aria-label="ফিরে যান" onClick={() => navigate('/purchases')}><ArrowLeft size={16} /></button>{t('purchase')} <span className="num">{p.ref_no ?? '—'}</span></span>}
         sub={`${fdatetime(p.date)} · ${p.user_name ?? ''}`}
         actions={
           <>
@@ -80,7 +80,7 @@ export function PurchaseDetailPage() {
               </button>
             ) : null}
             {can(PERMS.PURCHASES_EDIT) && !voided ? <button className="btn btn-danger" onClick={() => setVoidOpen(true)}><Ban size={15} /> {t('purchase_void')}</button> : null}
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
             <button className="btn btn-secondary" onClick={() => doPrint()}><Printer size={15} /> {t('print_btn')}</button>
           </>
         }

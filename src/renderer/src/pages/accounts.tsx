@@ -87,7 +87,7 @@ export function Accounts() {
                 <div className="strong">{a.name}</div>
                 <div className="small muted">{TYPE_BN[a.type] ?? a.type}{a.account_no ? ` · ${a.account_no}` : ''}</div>
               </div>
-              <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon"><MoreHorizontal size={15} /></button>}>
+              <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="আরও বিকল্প"><MoreHorizontal size={15} /></button>}>
                 <MenuItem icon={<ChevronDown size={14} />} onClick={() => setLedgerFor(a)}>{t('ledger')}</MenuItem>
                 {can(PERMS.ACCOUNTS_MANAGE) ? <MenuItem icon={<Pencil size={14} />} onClick={() => setEditFor(a)}>{t('edit')}</MenuItem> : null}
               </Menu>

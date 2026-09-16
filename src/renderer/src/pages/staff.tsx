@@ -48,7 +48,7 @@ export function Staff() {
     {
       key: 'act', header: '', width: 150,
       render: (r) => can(PERMS.STAFF_MANAGE) && !r.is_owner ? (
-        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon"><Pencil size={14} /></button>}>
+        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="সম্পাদনা"><Pencil size={14} /></button>}>
           <MenuItem onClick={() => setMemberOpen({ existing: r })}>{t('edit')}</MenuItem>
           <MenuItem icon={<KeyRound size={14} />} onClick={() => setPwFor(r)}>পাসওয়ার্ড রিসেট</MenuItem>
           <div className="menu-sep" />
@@ -150,7 +150,7 @@ function RoleList({ roles, onEdit, onDelete, canManage }: { roles: Role[]; onEdi
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div className="grow"><div className="strong">{r.name}</div><div className="small muted">{r.permissions.length} অনুমতি</div></div>
               {canManage && !r.is_system ? (
-                <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon"><Pencil size={13} /></button>}>
+                <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="সম্পাদনা"><Pencil size={13} /></button>}>
                   <MenuItem onClick={() => onEdit(r)}>{t('edit')}</MenuItem>
                   <MenuItem icon={<Trash2 size={13} />} danger onClick={() => onDelete(r)}>{t('delete')}</MenuItem>
                 </Menu>

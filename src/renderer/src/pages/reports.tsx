@@ -129,8 +129,8 @@ export function Reports() {
         sub={t('reports_sub')}
         actions={
           <>
-            <button className="btn btn-secondary btn-icon" title="CSV" onClick={() => doPrint(false, true)}><FileSpreadsheet size={16} /></button>
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
+            <button aria-label="CSV" className="btn btn-secondary btn-icon" title="CSV" onClick={() => doPrint(false, true)}><FileSpreadsheet size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => doPrint(true)}><FileDown size={16} /></button>
             <button className="btn btn-primary" onClick={() => doPrint()}><Printer size={15} /> প্রিন্ট</button>
           </>
         }

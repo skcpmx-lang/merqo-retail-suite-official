@@ -122,7 +122,7 @@ export function ProductForm({ mode }: { mode: 'new' | 'edit' }) {
   return (
     <div className="page" style={{ maxWidth: 900 }}>
       <PageHeader
-        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(-1)}><ArrowLeft size={16} /></button>{isEdit ? t('edit_product') : t('new_product')}</span>}
+        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" aria-label="ফিরে যান" onClick={() => navigate(-1)}><ArrowLeft size={16} /></button>{isEdit ? t('edit_product') : t('new_product')}</span>}
         sub={isEdit ? 'পণ্যের তথ্য হালনাগাদ করুন' : 'নতুন পণ্য স্টকে যোগ করুন'}
       />
 
@@ -147,7 +147,7 @@ export function ProductForm({ mode }: { mode: 'new' | 'edit' }) {
                   <option value="">—</option>
                   {(catalog?.categories ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <button className="btn btn-secondary btn-icon" title="নতুন ক্যাটাগরি" onClick={() => setNewCatOpen(true)}><Plus size={14} /></button>
+                <button aria-label="নতুন ক্যাটাগরি" className="btn btn-secondary btn-icon" title="নতুন ক্যাটাগরি" onClick={() => setNewCatOpen(true)}><Plus size={14} /></button>
               </div>
             </Field>
             <Field label={t('cat_brand').split(' · ')[1] ?? 'ব্র্যান্ড'}>
@@ -156,7 +156,7 @@ export function ProductForm({ mode }: { mode: 'new' | 'edit' }) {
                   <option value="">—</option>
                   {(catalog?.brands ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
-                <button className="btn btn-secondary btn-icon" title="নতুন ব্র্যান্ড" onClick={() => setNewBrandOpen(true)}><Plus size={14} /></button>
+                <button aria-label="নতুন ব্র্যান্ড" className="btn btn-secondary btn-icon" title="নতুন ব্র্যান্ড" onClick={() => setNewBrandOpen(true)}><Plus size={14} /></button>
               </div>
             </Field>
           </div>

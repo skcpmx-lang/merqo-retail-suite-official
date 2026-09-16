@@ -68,7 +68,7 @@ export function Notifications() {
       render: (r) => (
         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
           {!r.is_read ? <button className="btn btn-ghost btn-sm" onClick={() => void markRead(r)}>পড়া হলো</button> : null}
-          <button className="btn btn-ghost btn-sm btn-icon" title="মুছুন" onClick={() => setClearOne(r)}><Trash2 size={14} /></button>
+          <button aria-label="মুছুন" className="btn btn-ghost btn-sm btn-icon" title="মুছুন" onClick={() => setClearOne(r)}><Trash2 size={14} /></button>
         </div>
       )
     }

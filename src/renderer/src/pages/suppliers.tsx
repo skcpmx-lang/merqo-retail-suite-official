@@ -62,7 +62,7 @@ export function SuppliersList() {
           {can(PERMS.DUES_PAY) && r.payable > 0 ? (
             <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setPayFor(r) }}><Banknote size={13} /> {t('pay_supplier')}</button>
           ) : null}
-          <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
+          <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="আরও বিকল্প" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={15} /></button>}>
             {can(PERMS.SUPPLIERS_MANAGE) ? <MenuItem icon={<Pencil size={14} />} onClick={() => setEditFor(r)}>{t('edit')}</MenuItem> : null}
             <div className="menu-sep" />
             {can(PERMS.SUPPLIERS_MANAGE) && r.status === 'active' ? <MenuItem icon={<Trash2 size={14} />} danger onClick={() => setDelFor(r)}>বন্ধ করুন</MenuItem> : null}

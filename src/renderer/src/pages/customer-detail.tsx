@@ -103,14 +103,14 @@ export function CustomerDetailPage() {
   return (
     <div className="page">
       <PageHeader
-        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/customers')}><ArrowLeft size={16} /></button>{c.name}</span>}
+        title={<span className="flex items-center gap-2"><button className="btn btn-ghost btn-sm btn-icon" aria-label="ফিরে যান" onClick={() => navigate('/customers')}><ArrowLeft size={16} /></button>{c.name}</span>}
         sub={[c.phone, c.address].filter(Boolean).join(' · ') || '—'}
         actions={
           <>
             {can(PERMS.DUES_COLLECT) && c.receivable > 0 ? (
               <button className="btn btn-primary" onClick={() => setCollectOpen(true)}><Banknote size={15} /> {t('collect_due')}</button>
             ) : null}
-            <button className="btn btn-secondary btn-icon" title="PDF" onClick={() => printStatement(true)}><FileDown size={16} /></button>
+            <button aria-label="PDF" className="btn btn-secondary btn-icon" title="PDF" onClick={() => printStatement(true)}><FileDown size={16} /></button>
             <button className="btn btn-secondary" onClick={() => printStatement()}><Printer size={15} /> স্টেটমেন্ট</button>
             {can(PERMS.CUSTOMERS_MANAGE) ? <button className="btn btn-secondary" onClick={() => setEditOpen(true)}><Pencil size={15} /> {t('edit')}</button> : null}
           </>

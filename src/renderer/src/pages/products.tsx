@@ -77,7 +77,7 @@ export function ProductsList() {
     {
       key: 'actions', header: '', width: 56,
       render: (r: ProdRow) => (
-        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={16} /></button>}>
+        <Menu align="right" trigger={<button className="btn btn-ghost btn-sm btn-icon" aria-label="আরও বিকল্প" onClick={(e) => e.stopPropagation()}><MoreHorizontal size={16} /></button>}>
           {can(PERMS.PRODUCTS_EDIT) ? <MenuItem icon={<Pencil size={14} />} onClick={() => navigate(`/products/${r.id}`)}>{t('edit')}</MenuItem> : null}
           <MenuItem icon={<Printer size={14} />} onClick={() => setLabelOpen(r)}>{t('print_label')}</MenuItem>
           {can(PERMS.INVENTORY_ADJUST) && r.track_stock ? <MenuItem icon={<Tag size={14} />} onClick={() => setAdjOpen(r)}>{t('adjust_stock')}</MenuItem> : null}
@@ -95,7 +95,7 @@ export function ProductsList() {
         sub={t('products_sub')}
         actions={
           <>
-            {can(PERMS.PRODUCTS_IMPORT) ? <button className="btn btn-secondary btn-icon" title={t('import_title')} onClick={() => setImpOpen(true)}><Upload size={16} /></button> : null}
+            {can(PERMS.PRODUCTS_IMPORT) ? <button className="btn btn-secondary btn-icon" aria-label={t('import_title')} title={t('import_title')} onClick={() => setImpOpen(true)}><Upload size={16} /></button> : null}
             <button className="btn btn-secondary" onClick={() => navigate('/inventory')}><Download size={15} /> {t('stock_summary')}</button>
             {can(PERMS.PRODUCTS_CREATE) ? <button className="btn btn-primary" onClick={() => navigate('/products/new')}><Plus size={16} /> {t('add_product')}</button> : null}
           </>
