@@ -205,11 +205,11 @@ Executed in the build sandbox against the completed codebase:
 | --- | --- | --- |
 | Typecheck (main+core+tests) | `npx tsc --noEmit -p tsconfig.json` | 0 errors |
 | Typecheck (renderer) | `npx tsc --noEmit -p src/renderer/tsconfig.json` | 0 errors |
-| Core + API smoke + hardening + perf tests | `npx vitest run --config tests/vitest.config.ts` | 79/79 pass |
+| Core + API smoke + hardening + perf tests | `npx vitest run --config tests/vitest.config.ts` | 83 pass + 1 conditional skip (first-run wizard, needs live fresh server) |
 | Production build | `npm run build` (electron-vite) | out/{main,preload,renderer} |
 | API smoke over real HTTP | `tests/api-smoke.test.ts` (boots core on ephemeral port) | 9/9 scenarios |
 | Full UI smoke — 30 routes | `tests/ui-smoke.test.tsx` (real React app in jsdom vs live QA server) | 30/30 mounts, 0 render errors |
-| Release hardening suite | `tests/hardening.test.ts` — authz matrix, manager tier, business isolation, 16 reconciliation scenarios, inventory equation, returns guards, import rollback, backup round-trip, MFS config, concurrency, first-run, phone monitor | 39/39 pass |
+| Release hardening suite | `tests/hardening.test.ts` — authz matrix, manager tier, business isolation, 16 reconciliation scenarios, inventory equation, returns guards, import rollback, backup round-trip, MFS config, concurrency, phone-monitor write matrix (19 endpoints), mid-operation transaction rollback (failure injection), historical immutability, import duplicate/barcode + 500-row bulk | 44/44 pass |
 | Performance gate | `tests/perf.test.ts` — 1,000 products / 1,000 customers / 5,000 sales | dashboard 877 ms; all other queries ≤ 40 ms |
 | First-run UI | `tests/firstrun-ui.test.tsx` — fresh install lands on setup wizard, no demo credentials | pass |
 | Production bundle purity | grep of `out/` for demo data / credentials | clean |

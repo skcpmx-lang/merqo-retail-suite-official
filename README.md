@@ -29,7 +29,7 @@
 npm install            # ডিপেন্ডেন্সি
 npm run dev            # ডেভ (Electron + Vite HMR)
 npm run typecheck      # tsc (main+core, renderer)
-npm test               # কোর + API স্মোক টেস্ট (26 টেস্ট, in-memory SQLite)
+npx vitest run --config tests/vitest.config.ts   # সম্পূর্ণ টেস্ট স্যুট (83 টেস্ট, in-memory SQLite)
 npm run build          # প্রোডাকশন বিল্ড → out/
 npm run dist           # Windows NSIS ইনস্টলার → release/
 ```
@@ -54,7 +54,7 @@ QA হারনেস প্রোডাকশন-বিল্ট SPA + আস�
 - **Renderer** (`src/renderer`) — React SPA; ৩০টি পেজ, কেন্দ্রীয় বাংলা লোকালাইজেশন (`i18n/bn.ts`), লাইট-মোড টোকেন সিস্টেম।
 - **Money** = পোয়াশা-ইন্টিজার (১৳ = ১০০), **qty** = 3dp REAL; WAC কস্টিং; মাল্টি-রাইট সব `db.transaction`-এ।
 
-বিস্তারিত: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · লাইসেন্স: [`docs/LICENSE-COMMERCIAL.md`](docs/LICENSE-COMMERCIAL.md) · OSS নোটিশ: [`docs/THIRD-PARTY-NOTICES.md`](docs/THIRD-PARTY-NOTICES.md)
+বিস্তারিত: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · রিলিজ নোট: [`docs/RELEASE-NOTES-1.0.0.md`](docs/RELEASE-NOTES-1.0.0.md) · ম্যানুয়াল QA চেকলিস্ট: [`docs/MANUAL-QA-CHECKLIST.md`](docs/MANUAL-QA-CHECKLIST.md) · লাইসেন্স: [`docs/LICENSE-COMMERCIAL.md`](docs/LICENSE-COMMERCIAL.md) · OSS নোটিশ: [`docs/THIRD-PARTY-NOTICES.md`](docs/THIRD-PARTY-NOTICES.md)
 
 ## 📦 Windows ইনস্টলার
 
