@@ -22,11 +22,15 @@ const DEV_URL = process.env['VITE_DEV_SERVER_URL']
 const SMOKE = process.env['MQ_SMOKE'] === '1'
 const SMOKE_OUT = process.env['MQ_SMOKE_OUT'] ?? ''
 
-function smokeReport(result: Record<string, unknown>, exitCode: number): void {
+function writeSmokeReport(result: Record<string, unknown>): void {
   try {
     if (SMOKE_OUT) fs.writeFileSync(SMOKE_OUT, JSON.stringify({ time: new Date().toISOString(), pid: process.pid, version: app.getVersion(), ...result }, null, 2))
     logLine(`[smoke] ${JSON.stringify(result)}`)
   } catch { /* */ }
+}
+
+function smokeReport(result: Record<string, unknown>, exitCode: number): void {
+  writeSmokeReport(result)
   app.exit(exitCode)
 }
 
@@ -412,6 +416,15 @@ if (!gotLock) {
   app.whenReady().then(() => {
     logLine(`[boot] MERQO Retail Suite v${app.getVersion()} starting (smoke=${SMOKE ? '1' : '0'})`)
     if (SMOKE) app.disableHardwareAcceleration()
+    // packaged-launch pre-check: native sqlite must load inside Electron's ABI
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require('better-sqlite3')
+      logLine('[boot] native better-sqlite3 loaded OK')
+    } catch (e) {
+      logLine(`[boot] NATIVE SQLITE LOAD FAILED: ${(e as Error).stack ?? e}`)
+      if (SMOKE) smokeReport({ rendererAlive: false, coreHealthOk: false, error: 'native-sqlite-load', detail: String((e as Error).message).slice(0, 200) }, 1)
+    }
     createSplash()
     try {
       const cfg = loadConfig()
@@ -422,8 +435,16 @@ if (!gotLock) {
     }
     registerIpc()
     createWindow()
-    // smoke watchdog: physical launch must render within 45s
-    if (SMOKE) setTimeout(() => smokeReport({ rendererAlive: false, coreHealthOk: false, error: '45s-timeout' }, 1), 45_000)
+    // smoke watchdog: physical launch must render within 45s; heartbeat proves main is alive
+    if (SMOKE) {
+      let beat = 0
+      const hb = setInterval(() => {
+        beat++
+        if (rendererAliveSeen || beat > 8) { clearInterval(hb); return }
+        writeSmokeReport({ heartbeat: beat, rendererAlive: false, coreError: coreError.slice(0, 160) })
+      }, 5_000)
+      setTimeout(() => { if (!rendererAliveSeen) smokeReport({ rendererAlive: false, coreHealthOk: false, error: '45s-timeout', coreError: coreError.slice(0, 160) }, 1) }, 45_000)
+    }
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
   })

@@ -136,27 +136,35 @@ jobs:
           MQ_SMOKE: '1'
           MQ_SMOKE_OUT: ${{ github.workspace }}\smoke-report.json
         run: |
-          $proc = Start-Process -FilePath $env:EXE -PassThru
-          $ok = $false
+          $proc = Start-Process -FilePath $env:EXE -ArgumentList "--enable-logging" -PassThru -RedirectStandardError electron-stderr.log -RedirectStandardOutput electron-stdout.log
           for ($i = 0; $i -lt 60; $i++) {
             Start-Sleep -Seconds 1
-            if (Test-Path smoke-report.json) { $ok = $true; break }
-            if ($proc.HasExited) { Write-Host "app exited early: $($proc.ExitCode)"; break }
+            if (Test-Path smoke-report.json) { break }
+            if ($proc.HasExited) { Write-Host "app exited early: code=$($proc.ExitCode)"; break }
           }
-          Start-Sleep -Seconds 2
+          Start-Sleep -Seconds 3
           try { Stop-Process -Name "MERQO Retail Suite" -Force -ErrorAction SilentlyContinue } catch {}
-          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no renderer-alive report within 60s — blank screen class failure" }
-          Get-Content smoke-report.json | Write-Host
+          Write-Host "=== smoke-report.json ==="
+          if (Test-Path smoke-report.json) { Get-Content smoke-report.json | Write-Host } else { Write-Host "(missing)" }
+          Write-Host "=== electron stderr ==="
+          if (Test-Path electron-stderr.log) { Get-Content electron-stderr.log -Tail 40 | Write-Host }
+          $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
+          Write-Host "=== app main.log ==="
+          if (Test-Path $appLog) { Get-Content $appLog -Tail 40 | Write-Host } else { Write-Host "(missing: $appLog)" }
+          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no report within 60s (see electron stderr + main.log above)" }
           $r = Get-Content smoke-report.json | ConvertFrom-Json
-          if (-not $r.rendererAlive) { throw "PACKAGED SMOKE FAILED: renderer never became alive" }
-          if (-not $r.coreHealthOk) { throw "PACKAGED SMOKE FAILED: embedded core not healthy after render" }
+          if (-not $r.rendererAlive) { throw "PACKAGED SMOKE FAILED: renderer never became alive ($($r.error) $($r.coreError) $($r.detail))" }
+          if (-not $r.coreHealthOk) { throw "PACKAGED SMOKE FAILED: embedded core not healthy after render ($($r.coreDetail))" }
           Write-Host "PACKAGED SMOKE PASSED — renderer alive, core healthy, version $($r.version)"
 
-      - name: Upload smoke report
+      - name: Upload smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: packaged-smoke-report
-          path: smoke-report.json
+          name: packaged-smoke-diagnostics
+          path: |
+            smoke-report.json
+            electron-stderr.log
+            electron-stdout.log
           if-no-files-found: ignore
           retention-days: 30
