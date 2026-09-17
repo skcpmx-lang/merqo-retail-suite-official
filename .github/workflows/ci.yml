@@ -180,19 +180,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git config --global user.email "ci@merqo.local"
-          git config --global user.name "merqo-ci"
-          git config --global advice.detachedHead false
+          git config user.email "ci@merqo.local"
+          git config user.name "merqo-ci"
           $branch = "${{ github.head_ref }}"
           if ($branch -eq '') { $branch = "${{ github.ref_name }}" }
-          git fetch origin $branch
-          git checkout FETCH_HEAD
-          New-Item -ItemType Directory -Force -Path qa/smoke-last | Out-Null
-          foreach ($f in @('smoke-report.json','electron-stderr.log','electron-stdout.log')) {
-            if (Test-Path $f) { Copy-Item $f qa/smoke-last/ -Force }
-          }
-          $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
-          if (Test-Path $appLog) { Copy-Item $appLog qa/smoke-last/app-main.log -Force }
-          git add qa/smoke-last
-          git commit -m "[skip ci] packaged-smoke diagnostics"
-          git push origin $branch
+          try {
+            git fetch origin "+refs/heads/$branch:refs/heads/$branch" 2>&1 | Write-Host
+            git reset --soft "refs/heads/$branch" 2>&1 | Write-Host
+            New-Item -ItemType Directory -Force -Path qa/smoke-last | Out-Null
+            foreach ($f in @('smoke-report.json','electron-stderr.log','electron-stdout.log')) {
+              if (Test-Path $f) { Copy-Item $f qa/smoke-last/ -Force }
+            }
+            $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
+            if (Test-Path $appLog) { Copy-Item $appLog qa/smoke-last/app-main.log -Force }
+            Get-ChildItem qa/smoke-last | ForEach-Object { Write-Host "diag: $($_.Name) $($_.Length) bytes" }
+            git add qa/smoke-last
+            git commit -m "[skip ci] packaged-smoke launch diagnostics" 2>&1 | Write-Host
+            git push origin "HEAD:$branch" 2>&1 | Write-Host
+          } catch { Write-Host "diagnostics commit failed (non-fatal): $_" }
