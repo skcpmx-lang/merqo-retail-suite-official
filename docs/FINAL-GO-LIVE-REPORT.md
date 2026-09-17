@@ -1,5 +1,5 @@
 # MERQO Retail Suite 1.0.0 — FINAL GO-LIVE REPORT
-**Commit at report time: see verification chain · Branch `arena/01a0abb2-merqo-retail-suite-official` · PR #1**
+**Commit `9f899c76` · Branch `arena/01a0abb2-merqo-retail-suite-official` · PR #1**
 
 Classification legend: **PASS** = verified by executed automated evidence (CI/physical runner/test suite) · **MANUAL PASS** = verified by direct code/config inspection in this environment · **ENVIRONMENT-LIMITED** = the strongest available verification ran here, but a physical element remains for staff · **NOT TESTED** = impossible in this environment, staff must verify · **BLOCKED** = none.
 
@@ -65,7 +65,7 @@ New this round: `tests/go-live.test.ts` (15 tests) — the deployment scenario o
 
 ## E · VERIFICATION CHAIN
 
-Branch tip → CI (`verify` + `windows-installer` + `packaged-smoke` all green) → artifact `MERQO-Retail-Suite-Setup` (exe) + `installer-info` (SHA256) → release `v1.0.0-rc` asset `MERQO-Retail-Suite-Setup-1.0.0.exe`.
+Commit `9f899c76` → CI run 35195805225: **verify ✓ · windows-installer ✓ · packaged-smoke ✓ (physical exe install + launch on real Windows)** → artifact `MERQO-Retail-Suite-Setup` (exe) + `installer-info` (SHA256) → release `v1.0.0-rc` asset `MERQO-Retail-Suite-Setup-1.0.0.exe`.
 
 ## F · RELEASE STATUS
 
