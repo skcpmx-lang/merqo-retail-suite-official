@@ -90,7 +90,7 @@ const mount = (route: string) => {
 /** ids for detail routes, fetched from the live seeded data */
 const ids: Record<string, string> = {}
 
-async function screenOk(route: string): Promise<string> {
+async function screenOk(route: string, expectText?: RegExp): Promise<string> {
   const consoleErrors: string[] = []
   const spy = vi.spyOn(console, 'error').mockImplementation((...a: unknown[]) => {
     const msg = String(a[0] ?? '')
@@ -119,6 +119,11 @@ async function screenOk(route: string): Promise<string> {
     expect(txt).not.toContain('চালু হচ্ছে')          // session must be ready
     expect(txt).not.toContain('লোড করা যায়নি')      // no query may hard-fail
     expect(txt).not.toContain('অনুমতি নেই')          // owner sees everything
+    if (expectText) {
+      // data-dependent assertions must WAIT for real data — a cold CI server may need
+      // longer than the fixed settle window (skeletons contain no digits)
+      await waitFor(() => { expect(container.textContent ?? '').toMatch(expectText) }, { timeout: 15_000 })
+    }
     expect(consoleErrors).toEqual([])
     return txt
   } finally {
@@ -198,8 +203,7 @@ describe.skipIf(!qaUp)('ui smoke — every route mounts on live data', () => {
   })
 
   it('dashboard shows real seeded numbers', async () => {
-    const txt = await screenOk('/dashboard')
-    expect(txt).toMatch(/৳|টাকা|০|[0-9]/)
+    await screenOk('/dashboard', /৳|[0-9]/)
   })
 
   it('products page lists seeded Bengali product', async () => {
