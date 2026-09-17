@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'"
+    />
+    <title>MERQO Retail Suite</title>
+    <link rel="stylesheet" href="./recovery.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="logo">MERQO<span>.</span></div>
+      <div class="sub">Retail Suite</div>
+      <div class="icon">⚠️</div>
+      <h1>MERQO চালু করতে একটি সমস্যা হয়েছে।</h1>
+      <p class="hint">অ্যাপ্লিকেশনের ভেতরের সার্ভার চালু করা যায়নি। নিচের সমাধানগুলো চেষ্টা করুন — আপনার ডেটা নিরাপদ আছে।</p>
+      <div class="actions">
+        <button id="retry" class="primary" type="button">পুনরায় চেষ্টা করুন</button>
+        <button id="relaunch" class="ghost" type="button">অ্যাপ্লিকেশন পুনরায় চালু করুন</button>
+        <button id="help" class="ghost" type="button">সহায়তা</button>
+      </div>
+      <p id="msg" class="msg" role="status"></p>
+      <p class="ref">রেফারেন্স: <span id="ref">—</span></p>
+      <p class="support">সহায়তার জন্য: merqoonline@gmail.com</p>
+    </div>
+    <script src="./recovery.js"></script>
+  </body>
+</html>

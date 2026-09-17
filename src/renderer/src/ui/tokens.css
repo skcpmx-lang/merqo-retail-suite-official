@@ -1,0 +1,108 @@
+/* ============================================================
+   MERQO Retail Suite — Design Tokens (light theme only)
+   One coherent visual language: calm neutrals, restrained accent,
+   engineered hierarchy. No gradients, no glass, no dark mode.
+   ============================================================ */
+
+:root {
+  /* surfaces */
+  --bg: #f3f4f6;
+  --bg-inset: #eceef1;
+  --surface: #ffffff;
+  --surface-2: #f8f9fb;
+  --surface-3: #f1f3f6;
+
+  /* borders */
+  --border: #e4e7ec;
+  --border-2: #d0d5dd;
+  --border-3: #b8bfc9;
+
+  /* text */
+  --text: #101828;
+  --text-2: #475467;
+  --text-3: #667085;
+  --text-4: #98a2b3;
+  --text-inv: #ffffff;
+
+  /* brand — deep, confident blue */
+  --primary: #1d4ed8;
+  --primary-hover: #1a45bd;
+  --primary-active: #163aa0;
+  --primary-soft: #eef4ff;
+  --primary-soft-2: #dfe9ff;
+  --primary-contrast: #ffffff;
+  --on-primary-soft: #17389e;
+
+  /* sidebar — ink */
+  --side-bg: #0f1729;
+  --side-bg-2: #0c1220;
+  --side-text: #9aa5b8;
+  --side-text-active: #ffffff;
+  --side-hover: rgba(255, 255, 255, 0.055);
+  --side-active-bg: rgba(72, 119, 235, 0.16);
+  --side-active-bar: #5b8cff;
+  --side-border: rgba(255, 255, 255, 0.07);
+
+  /* semantic */
+  --success: #0b8a47;
+  --success-hover: #09763d;
+  --success-soft: #e9f7ef;
+  --success-text: #076b39;
+  --warning: #b45309;
+  --warning-soft: #fdf3e7;
+  --warning-text: #92400e;
+  --danger: #d92d20;
+  --danger-hover: #c01f14;
+  --danger-soft: #feecea;
+  --danger-text: #b42318;
+  --info: #175cd3;
+  --info-soft: #eff4ff;
+  --info-text: #1849a9;
+
+  /* typography */
+  --font: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif;
+  --mono: 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-17: 17px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+
+  /* spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* radius */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+  --r-full: 999px;
+
+  /* shadows */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-2: 0 1px 3px rgba(16, 24, 40, 0.09), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-3: 0 12px 28px rgba(16, 24, 40, 0.16), 0 2px 6px rgba(16, 24, 40, 0.08);
+  --shadow-pop: 0 6px 20px rgba(16, 24, 40, 0.13), 0 2px 6px rgba(16, 24, 40, 0.07);
+
+  /* layout */
+  --side-w: 232px;
+  --side-w-collapsed: 68px;
+  --header-h: 56px;
+  --content-max: 1560px;
+
+  /* motion */
+  --tr-fast: 120ms cubic-bezier(0.2, 0, 0, 1);
+  --tr: 180ms cubic-bezier(0.2, 0, 0, 1);
+  --tr-slow: 260ms cubic-bezier(0.2, 0, 0, 1);
+}

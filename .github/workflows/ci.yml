@@ -1,0 +1,263 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (main+core, renderer)
+        run: npm run typecheck
+
+      - name: Unit + API smoke tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: QA server + full UI smoke (30 routes)
+        run: |
+          npx esbuild scripts/qa-server.ts --bundle --platform=node --format=cjs \
+            --external:better-sqlite3 --external:express --outfile=out/qa/server.cjs
+          node out/qa/server.cjs &
+          MQ_QA_FRESH=1 MQ_QA_PORT=8081 MQ_QA_DATA=out/qa-data-fresh node out/qa/server.cjs &
+          sleep 2
+          bash scripts/qa-seed.sh
+          npx vitest run --config tests/vitest.config.ts tests/ui-smoke.test.tsx tests/firstrun-ui.test.tsx
+
+  windows-installer:
+    runs-on: windows-latest
+    needs: verify
+    permissions:
+      contents: write
+    # automatic on main; also builds on the release-candidate branch for validation
+    if: github.ref == 'refs/heads/main' || github.head_ref == 'arena/01a0abb2-merqo-retail-suite-official' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Clean release directory (canonical artifact name — no _N suffixes)
+        shell: pwsh
+        run: if (Test-Path release) { Remove-Item release -Recurse -Force }
+
+      - name: Build + package NSIS installer (signs app exe, uninstaller, installer via sign hook)
+        run: npm run dist
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 0
+          # Signing identity — both routes are optional; absent = unsigned RC build (explicit warning in logs).
+          # Route 1: OV cert with private key in the org's own Azure Key Vault (AzureSignTool)
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
+          # Route 2: legacy file-based PFX
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Assert canonical installer filename (release blocker if suffixed)
+        shell: pwsh
+        run: |
+          $exes = Get-ChildItem release/*.exe
+          $names = $exes.Name -join ', '
+          Write-Host "built exes: $names"
+          if (($exes | Measure-Object).Count -ne 1) { throw "expected exactly ONE installer exe, got: $names" }
+          if ($exes[0].Name -ne 'MERQO-Retail-Suite-Setup-1.0.0.exe') { throw "unexpected artifact name: $($exes[0].Name) (no _2/_3 suffixes allowed)" }
+
+      - name: Verify signatures (strict when signing identity is configured)
+        shell: pwsh
+        env:
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          $signingConfigured = ($env:AZURE_KEY_VAULT_URI -and $env:AZURE_TENANT_ID -and $env:AZURE_CLIENT_ID -and $env:AZURE_CLIENT_SECRET -and $env:AZURE_CERT_NAME) -or $env:WIN_CSC_LINK
+          $targets = @(Get-ChildItem release/*.exe)
+          $appExe = Get-ChildItem release/win-unpacked/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($appExe) { $targets += $appExe }
+          $rows = @()
+          foreach ($t in $targets) {
+            $sig = Get-AuthenticodeSignature $t.FullName
+            $rows += [pscustomobject]@{
+              File = $t.Name
+              Status = [string]$sig.Status
+              Signer = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '(unsigned)' }
+              Timestamp = if ($sig.TimeStamperCertificate) { $sig.TimeStamperCertificate.Subject } else { '(none)' }
+            }
+          }
+          $rows | Format-Table -AutoSize | Out-String | Write-Host
+          ($rows | ConvertTo-Json) | Out-File -Encoding utf8 release/signature-report.json
+          if ($signingConfigured) {
+            $bad = $rows | Where-Object { $_.Status -ne 'Valid' }
+            if ($bad) { throw "SIGNATURE VERIFICATION FAILED:`n$($bad | Format-Table -AutoSize | Out-String)" }
+            Write-Host "SIGNATURE VERIFICATION PASSED — all production binaries Valid (SHA-256, RFC-3161 timestamped)"
+          } else {
+            Write-Host "::warning::Production binaries are UNSIGNED — no signing identity (secrets) configured. Smart App Control WILL block this installer. Configure signing secrets per docs/CODE-SIGNING.md before public release."
+          }
+
+      - name: Record installer name + SHA256
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem release/*.exe | Select-Object -First 1
+          $sha = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash
+          $info = "file=$($exe.Name)`nsize=$($exe.Length)`nsha256=$sha`ncommit=$env:GITHUB_SHA"
+          $info | Out-File -Encoding utf8 release/installer-info.txt
+          Write-Host $info
+          Add-Content $env:GITHUB_STEP_SUMMARY "`n``````
+          $info
+          ``````"
+
+      - name: Upload checksum + signature manifest artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-info
+          path: |
+            release/installer-info.txt
+            release/signature-report.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish installer to GitHub release (v1.0.0-rc)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v1.0.0-rc"
+          $exe = Get-ChildItem release/*.exe | Select-Object -First 1
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --prerelease --title "MERQO Retail Suite 1.0.0 (Release Candidate)" --notes "Windows installer built by CI from commit $env:GITHUB_SHA. Verify the SHA256 in the installer-info artifact before installing."
+          }
+          gh release upload $tag $exe.FullName --repo $env:GITHUB_REPOSITORY --clobber
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MERQO-Retail-Suite-Setup
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  # ── PHYSICAL packaged-app smoke: install the real NSIS exe on real Windows and launch it ──
+  packaged-smoke:
+    runs-on: windows-latest
+    needs: windows-installer
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MERQO-Retail-Suite-Setup
+          path: installer
+
+      - name: Silent install
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer/*.exe | Where-Object { $_.Name -eq 'MERQO-Retail-Suite-Setup-1.0.0.exe' } | Select-Object -First 1
+          if (-not $setup) { $setup = Get-ChildItem installer/*.exe | Select-Object -First 1 }
+          Write-Host "Installing $($setup.Name)"
+          $p = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait -PassThru
+          Write-Host "installer exit: $($p.ExitCode)"
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "MERQO*.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch "Uninstall" } | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem "$env:ProgramFiles" -Directory -Filter "MERQO*" | ForEach-Object { Get-ChildItem $_.FullName -Recurse -Filter "MERQO*.exe" } | Where-Object { $_.Name -notmatch "Uninstall" } | Select-Object -First 1 }
+          if (-not $exe) { throw "installed exe not found" }
+          Write-Host "exe: $($exe.FullName)"
+          "EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Launch packaged app (smoke mode)
+        shell: pwsh
+        env:
+          MQ_SMOKE: '1'
+          MQ_SMOKE_OUT: ${{ github.workspace }}\smoke-report.json
+        run: |
+          $proc = Start-Process -FilePath $env:EXE -ArgumentList "--enable-logging" -PassThru -RedirectStandardError electron-stderr.log -RedirectStandardOutput electron-stdout.log
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            if (Test-Path smoke-report.json) { break }
+            if ($proc.HasExited) { Write-Host "app exited early: code=$($proc.ExitCode)"; break }
+          }
+          Start-Sleep -Seconds 3
+          try { Stop-Process -Name "MERQO Retail Suite" -Force -ErrorAction SilentlyContinue } catch {}
+          Write-Host "=== smoke-report.json ==="
+          if (Test-Path smoke-report.json) { Get-Content smoke-report.json | Write-Host } else { Write-Host "(missing)" }
+          Write-Host "=== electron stderr (tail) ==="
+          if (Test-Path electron-stderr.log) { Get-Content electron-stderr.log -Tail 40 | Write-Host }
+          $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
+          Write-Host "=== app main.log (tail) ==="
+          if (Test-Path $appLog) { Get-Content $appLog -Tail 40 | Write-Host } else { Write-Host "(missing: $appLog)" }
+          # surface diagnostics as check-run annotations (API-readable)
+          if (Test-Path smoke-report.json) { Write-Host ("::error::SMOKE_REPORT " + ((Get-Content smoke-report.json -Raw) -replace "\r?\n", " | ")) }
+          if (Test-Path electron-stderr.log) { Write-Host ("::error::ELECTRON_STDERR " + (((Get-Content electron-stderr.log -Tail 25) -join " || ") -replace "\r?\n", " ")) }
+          if (Test-Path $appLog) { Write-Host ("::error::APP_MAIN_LOG " + (((Get-Content $appLog -Tail 25) -join " || ") -replace "\r?\n", " ")) }
+          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no report within 60s (see ELECTRON_STDERR / APP_MAIN_LOG annotations)" }
+          $r = Get-Content smoke-report.json | ConvertFrom-Json
+          if (-not $r.rendererAlive) { throw "PACKAGED SMOKE FAILED: renderer never became alive ($($r.error) $($r.coreError) $($r.detail))" }
+          if (-not $r.coreHealthOk) { throw "PACKAGED SMOKE FAILED: embedded core not healthy after render ($($r.coreDetail))" }
+          Write-Host "PACKAGED SMOKE PASSED — renderer alive, core healthy, version $($r.version)"
+
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-smoke-diagnostics
+          path: |
+            smoke-report.json
+            electron-stderr.log
+            electron-stdout.log
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # sandbox cannot pull binary artifacts — commit diagnostics to the branch ([skip ci] prevents loops)
+      - name: Commit diagnostics to branch
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.email "ci@merqo.local"
+          git config user.name "merqo-ci"
+          $branch = "${{ github.head_ref }}"
+          if ($branch -eq '') { $branch = "${{ github.ref_name }}" }
+          try {
+            New-Item -ItemType Directory -Force -Path qa/smoke-last | Out-Null
+            foreach ($f in @('smoke-report.json','electron-stderr.log','electron-stdout.log')) {
+              if (Test-Path $f) { Copy-Item $f qa/smoke-last/ -Force }
+            }
+            $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
+            if (Test-Path $appLog) { Copy-Item $appLog qa/smoke-last/app-main.log -Force }
+            Get-ChildItem qa/smoke-last | ForEach-Object { Write-Host "diag: $($_.Name) $($_.Length) bytes" }
+            git add qa/smoke-last
+            git commit -m "[skip ci] packaged-smoke launch diagnostics" 2>&1 | Write-Host
+            git push origin "HEAD:$branch" 2>&1 | Write-Host
+          } catch { Write-Host "diagnostics commit failed (non-fatal): $_" }
