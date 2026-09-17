@@ -37,6 +37,8 @@ MERQO Retail Suite 1.0.0 is an offline-first desktop retail platform: POS, sales
 
 **Security:** scrypt password hashing, hashed session tokens with idle/absolute expiry, brute-force lockout, 30+ granular permissions enforced in the core (never only in UI), sandboxed renderer, minimal IPC, clean `npm audit`.
 
+**Release-candidate rescue (physical launch round):** the packaged app initially opened a blank white window — root-caused to a missing React Router wrapper in the production entry (all source tests passed because the test harness supplies its own router). Fixed with HashRouter plus a full startup contract: branded Bengali splash → renderer health polling → app; Bengali recovery screen with retry/relaunch/support (no raw stack traces); renderer watchdog. **The installed exe is now physically launched by Windows CI on every push** (`packaged-smoke`: silent install → launch → renderer alive → core healthy). Professional icon regenerated (full-bleed emerald tile, 7-size ico), installer language pinned deterministic, complete Bengali terminology audit applied (docs/TERMINOLOGY-BN.md).
+
 **Known limitations (environment of record):** Windows installer verified by CI build only (not physically executed in the build sandbox); printer output validated at layout/CSS level, not on physical paper; LAN concurrency proven via parallel API testing, not across physical machines. See `docs/MANUAL-QA-CHECKLIST.md` for pre-deployment validation steps.
 
 **Contact:** MERQO · merqoonline@gmail.com
