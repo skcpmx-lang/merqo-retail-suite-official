@@ -150,12 +150,16 @@ jobs:
           try { Stop-Process -Name "MERQO Retail Suite" -Force -ErrorAction SilentlyContinue } catch {}
           Write-Host "=== smoke-report.json ==="
           if (Test-Path smoke-report.json) { Get-Content smoke-report.json | Write-Host } else { Write-Host "(missing)" }
-          Write-Host "=== electron stderr ==="
+          Write-Host "=== electron stderr (tail) ==="
           if (Test-Path electron-stderr.log) { Get-Content electron-stderr.log -Tail 40 | Write-Host }
           $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
-          Write-Host "=== app main.log ==="
+          Write-Host "=== app main.log (tail) ==="
           if (Test-Path $appLog) { Get-Content $appLog -Tail 40 | Write-Host } else { Write-Host "(missing: $appLog)" }
-          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no report within 60s (see electron stderr + main.log above)" }
+          # surface diagnostics as check-run annotations (API-readable)
+          if (Test-Path smoke-report.json) { Write-Host ("::error::SMOKE_REPORT " + ((Get-Content smoke-report.json -Raw) -replace "\r?\n", " | ")) }
+          if (Test-Path electron-stderr.log) { Write-Host ("::error::ELECTRON_STDERR " + (((Get-Content electron-stderr.log -Tail 25) -join " || ") -replace "\r?\n", " ")) }
+          if (Test-Path $appLog) { Write-Host ("::error::APP_MAIN_LOG " + (((Get-Content $appLog -Tail 25) -join " || ") -replace "\r?\n", " ")) }
+          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no report within 60s (see ELECTRON_STDERR / APP_MAIN_LOG annotations)" }
           $r = Get-Content smoke-report.json | ConvertFrom-Json
           if (-not $r.rendererAlive) { throw "PACKAGED SMOKE FAILED: renderer never became alive ($($r.error) $($r.coreError) $($r.detail))" }
           if (-not $r.coreHealthOk) { throw "PACKAGED SMOKE FAILED: embedded core not healthy after render ($($r.coreDetail))" }
@@ -185,8 +189,6 @@ jobs:
           $branch = "${{ github.head_ref }}"
           if ($branch -eq '') { $branch = "${{ github.ref_name }}" }
           try {
-            git fetch origin "+refs/heads/$branch:refs/heads/$branch" 2>&1 | Write-Host
-            git reset --soft "refs/heads/$branch" 2>&1 | Write-Host
             New-Item -ItemType Directory -Force -Path qa/smoke-last | Out-Null
             foreach ($f in @('smoke-report.json','electron-stderr.log','electron-stdout.log')) {
               if (Test-Path $f) { Copy-Item $f qa/smoke-last/ -Force }
