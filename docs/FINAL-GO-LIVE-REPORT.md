@@ -69,7 +69,7 @@ Commit `9f899c76` → CI run 35195805225: **verify ✓ · windows-installer ✓ 
 
 ## F · RELEASE STATUS
 
-**RELEASE CANDIDATE — no blocked items.**
+**RELEASE CANDIDATE — one commercial-distribution blocker: the production installer is UNSIGNED (Windows Smart App Control blocks unverified publishers on a real Windows 11 machine, confirmed physically by the owner).** The full code-signing pipeline is now implemented and verified (see `docs/CODE-SIGNING-REPORT.md`): custom sign hook in correct order (app exe → uninstaller → installer), SHA-256 + RFC-3161 timestamp, strict CI signature verification, canonical-filename assertion. Activation awaits MERQO's exact legal publisher name + OV certificate (Azure Key Vault route recommended — Azure Artifact Signing is not eligible for Bangladesh-based organizations). Signing does not change application code; 98-test suite, packaged smoke and all gates remain green.
 
 All 24 checklist items are either **PASS** (automated evidence), **MANUAL PASS** (inspection), or **ENVIRONMENT-LIMITED/NOT TESTED** strictly where physical hardware/human presence is required. Nothing testable here remains untested; nothing physical is claimed as tested.
 
