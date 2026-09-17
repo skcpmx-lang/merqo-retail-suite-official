@@ -100,6 +100,7 @@ export function Expenses() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো খরচ নেই"
         emptySub="দোকান ভাড়া, বিদ্যুৎ বিল, বকেয়া পরিবহন — সব খরচ এখানে রাখুন"
+        emptyAction={can(PERMS.EXPENSES_CREATE) ? <button className="btn btn-primary btn-sm" onClick={() => setNewOpen(true)}><Plus size={14} /> {t('add_expense')}</button> : undefined}
         maxHeight="calc(100vh - 420px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

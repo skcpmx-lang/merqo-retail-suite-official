@@ -83,6 +83,7 @@ export function PurchasesList() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো ক্রয় নেই"
         emptySub="সরবরাহকারী থেকে পণ্য কিনতে নতুন ক্রয় শুরু করুন"
+        emptyAction={can(PERMS.PURCHASES_CREATE) ? <button className="btn btn-primary btn-sm" onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('new_purchase')}</button> : undefined}
         maxHeight="calc(100vh - 400px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

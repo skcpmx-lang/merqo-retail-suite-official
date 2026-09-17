@@ -123,6 +123,7 @@ export function ProductsList() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো পণ্য নেই"
         emptySub="প্রথম পণ্য যোগ করুন বা CSV থেকে ইমপোর্ট করুন"
+        emptyAction={can(PERMS.PRODUCTS_CREATE) ? <button className="btn btn-primary btn-sm" onClick={() => navigate('/products/new')}><Plus size={14} /> {t('add_product')}</button> : undefined}
         maxHeight="calc(100vh - 360px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

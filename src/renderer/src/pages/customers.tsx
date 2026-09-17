@@ -107,6 +107,7 @@ export function CustomersList() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো গ্রাহক নেই"
         emptySub="বাকিতে বিক্রি করতে গ্রাহক যোগ করুন"
+        emptyAction={can(PERMS.CUSTOMERS_MANAGE) ? <button className="btn btn-primary btn-sm" onClick={() => setNewOpen(true)}><Plus size={14} /> {t('add_customer')}</button> : undefined}
         maxHeight="calc(100vh - 360px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

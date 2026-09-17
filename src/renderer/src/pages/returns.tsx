@@ -55,6 +55,7 @@ export function ReturnsList() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো ফেরত নেই"
         emptySub="চালান থেকে ফেরত করা যায়"
+        emptyAction={<button className="btn btn-secondary btn-sm" onClick={() => navigate('/documents')}>{t('nav_documents')}</button>}
         maxHeight="calc(100vh - 300px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

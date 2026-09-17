@@ -96,6 +96,7 @@ export function SuppliersList() {
         onRetry={() => void refetch()}
         emptyTitle="কোনো সরবরাহকারী নেই"
         emptySub="পণ্য কেনার জন্য সরবরাহকারী যোগ করুন"
+        emptyAction={can(PERMS.SUPPLIERS_MANAGE) ? <button className="btn btn-primary btn-sm" onClick={() => setNewOpen(true)}><Plus size={14} /> {t('add_supplier')}</button> : undefined}
         maxHeight="calc(100vh - 360px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>

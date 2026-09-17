@@ -114,6 +114,7 @@ export function SalesList() {
         onRetry={() => void refetch()}
         emptyTitle="এই সময়ে কোনো বিক্রয় নেই"
         emptySub="POS থেকে বিক্রয় শুরু করুন"
+        emptyAction={<button className="btn btn-primary btn-sm" onClick={() => navigate('/pos')}>{t('nav_pos')}</button>}
         maxHeight="calc(100vh - 360px)"
       />
       <div className="card" style={{ borderTop: 'none', borderRadius: '0 0 var(--r-xl) var(--r-xl)' }}>
