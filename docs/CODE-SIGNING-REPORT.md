@@ -37,12 +37,20 @@ Why (verified against current Microsoft documentation, 2026):
 
 ## Certificate/provider requirements
 
-To activate signing, MERQO must provide (**not yet supplied — activation is intentionally blocked until then**):
-1. **The exact legal publisher entity name** — the string that will appear in Windows' "Publisher" field, exactly matching the certificate subject (e.g. the registered English trade-license/company name). Required per policy; no invented identity will be used.
-2. An **OV code-signing certificate** issued to that legal entity (DigiCert / Sectigo / GlobalSign or their Bangladesh resellers; org validation needs trade-license/company registration + TIN documents; ~US$150–400/year).
-3. **Azure Key Vault** setup (Azure account works from Bangladesh): Key Vault → generate/import the code-signing certificate; Entra ID app registration (client ID + secret) with *sign* permission on the key/certificate.
-4. GitHub **Actions secrets** (repository or protected `production` environment — secrets are never committed to the repo):
-   `AZURE_KEY_VAULT_URI`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_CERT_NAME`.
+**Owner decision recorded 2026-09-17:** publisher identity = **sole proprietor (individual)**; signing route to be finalized once the exact legal name is confirmed.
+
+Consequences for the individual (Bangladesh) route:
+- **Azure Artifact Signing individual onboarding = USA/Canada only → still not eligible.**
+- Realistic individual-validated cloud certificates (private key in CA cloud HSM per the 2023 baseline; worldwide incl. Bangladesh):
+  - **Certum Standard Code Signing (Cloud)** — for natural persons, ~€25–75/yr, publisher = the person's legal name;
+  - **SSL.com eSigner individual OV code signing** — ~$249/yr+ incl. cloud signing subscription.
+- Both integrate at the prepared hook point (`scripts/sign-win.cjs`, extension documented); the specific CLI wiring (~20 lines) lands once the service is chosen.
+- The organization route (OV cert + own Azure Key Vault + AzureSignTool) remains documented and ready for a seamless future switch when a company is registered; the Publisher field then shows the company name.
+
+Still required before activation (**intentionally blocked until provided**):
+1. **The exact legal personal name** as it should appear in Windows' "Publisher" field (matching passport/NID or trade-license English spelling).
+2. Purchase of one of the individual cloud certificates above (passport/NID identity validation).
+3. The service's CI secret set (exact variable names provided at activation).
 
 ## Files signed (once activated)
 
