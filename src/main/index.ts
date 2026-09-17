@@ -21,6 +21,8 @@ const DEV_URL = process.env['VITE_DEV_SERVER_URL']
 /** CI packaged-launch smoke mode: physical proof the installed app renders + serves. */
 const SMOKE = process.env['MQ_SMOKE'] === '1'
 const SMOKE_OUT = process.env['MQ_SMOKE_OUT'] ?? ''
+// must run BEFORE app ready — disable GPU in CI/headless smoke runs
+if (SMOKE) app.disableHardwareAcceleration()
 
 function writeSmokeReport(result: Record<string, unknown>): void {
   try {
@@ -415,7 +417,6 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     logLine(`[boot] MERQO Retail Suite v${app.getVersion()} starting (smoke=${SMOKE ? '1' : '0'})`)
-    if (SMOKE) app.disableHardwareAcceleration()
     // packaged-launch pre-check: native sqlite must load inside Electron's ABI
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
