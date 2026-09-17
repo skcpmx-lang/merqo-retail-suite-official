@@ -109,6 +109,8 @@ jobs:
   packaged-smoke:
     runs-on: windows-latest
     needs: windows-installer
+    permissions:
+      contents: write
     steps:
       - name: Download installer artifact
         uses: actions/download-artifact@v4
@@ -168,3 +170,27 @@ jobs:
             electron-stdout.log
           if-no-files-found: ignore
           retention-days: 30
+
+      # sandbox cannot pull binary artifacts — commit diagnostics to the branch ([skip ci] prevents loops)
+      - name: Commit diagnostics to branch
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.email "ci@merqo.local"
+          git config --global user.name "merqo-ci"
+          git config --global advice.detachedHead false
+          $branch = "${{ github.head_ref }}"
+          if ($branch -eq '') { $branch = "${{ github.ref_name }}" }
+          git fetch origin $branch
+          git checkout FETCH_HEAD
+          New-Item -ItemType Directory -Force -Path qa/smoke-last | Out-Null
+          foreach ($f in @('smoke-report.json','electron-stderr.log','electron-stdout.log')) {
+            if (Test-Path $f) { Copy-Item $f qa/smoke-last/ -Force }
+          }
+          $appLog = "$env:APPDATA\MERQO Retail Suite\logs\main.log"
+          if (Test-Path $appLog) { Copy-Item $appLog qa/smoke-last/app-main.log -Force }
+          git add qa/smoke-last
+          git commit -m "[skip ci] packaged-smoke diagnostics"
+          git push origin $branch
