@@ -119,7 +119,7 @@ export function Dashboard() {
           <div className="card-header">
             <div>
               <h3>{t('sales_trend')}</h3>
-              {can(PERMS.FINANCE_VIEW) ? <div className="sub">নীল: বিক্রয় · সবুজ: গ্রস লাভ</div> : <div className="sub">বিক্রয়ের ধারা</div>}
+              {can(PERMS.FINANCE_VIEW) ? <div className="sub">নীল: বিক্রয় · সবুজ: মোট লাভ</div> : <div className="sub">বিক্রয়ের ধারা</div>}
             </div>
           </div>
           <div style={{ height: 260, padding: '12px 8px 4px' }}>
@@ -187,7 +187,7 @@ export function Dashboard() {
                   <div className="strong num">{s.invoice_no}</div>
                   <div className="small muted ellip">{s.customer_name ?? 'নগদ গ্রাহক'} · {s.user_name ?? ''} · {ftime(s.date)}</div>
                 </div>
-                {s.due > 0 ? <Badge tone="warning">বাকি {money(s.due, { decimals: false })}</Badge> : null}
+                {s.due > 0 ? <Badge tone="warning">বকেয়া {money(s.due, { decimals: false })}</Badge> : null}
                 <div className="t-num strong num">{money(s.total)}</div>
               </div>
             ))}
@@ -228,7 +228,7 @@ export function Dashboard() {
               </div>
               <div className="flex gap-3 small muted num">
                 <span>মাসিক বিক্রয় <b className="strong">{money(data.month.sales)}</b></span>
-                <span>গ্রস <b className="strong pos">{money(data.month.gross_profit)}</b></span>
+                <span>মোট লাভ <b className="strong pos">{money(data.month.gross_profit)}</b></span>
                 <span>খরচ <b className="strong">{money(data.month.expenses)}</b></span>
                 <span>নিট <b className={`strong ${data.month.net_profit >= 0 ? 'pos' : 'neg'}`}>{money(data.month.net_profit)}</b></span>
               </div>

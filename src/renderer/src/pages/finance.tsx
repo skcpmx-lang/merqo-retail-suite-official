@@ -56,7 +56,7 @@ export function Finance() {
       rows: [
         ['বিক্রয় (মোট)', money(data.revenue)],
         ['বিক্রীত পণ্যের ব্যয় (COGS)', `− ${money(data.cogs)}`],
-        ['গ্রস লাভ', money(data.gross_profit)],
+        ['মোট লাভ', money(data.gross_profit)],
         ['MFS কমিশন', money(data.mfs_income.commission)],
         ['MFS সার্ভিস চার্জ', money(data.mfs_income.service_charge)],
         ...data.expenses.map((e) => [`খরচ — ${e.category}`, `− ${money(e.amount)}`]),
@@ -92,7 +92,7 @@ export function Finance() {
         {data.returns > 0 ? <div className="sum-row"><span className="muted">ফেরত</span><span className="num muted">− {money(data.returns)}</span></div> : null}
         <div className="sum-row"><span>বিক্রীত পণ্যের ব্যয় (COGS)</span><span className="num neg">− {money(data.cogs)}</span></div>
         <div className="sum-row big" style={{ borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-          <span>গ্রস লাভ</span>
+          <span>মোট লাভ</span>
           <span className={`num ${data.gross_profit >= 0 ? 'pos' : 'neg'}`}>{money(data.gross_profit)} <span className="small muted">({grossMargin}%)</span></span>
         </div>
 
