@@ -9,7 +9,7 @@ import { api } from '@/api/client'
 import { useSession } from '@/state/session'
 import { useToast } from '@/state/toast'
 import { t, money, num } from '@/i18n/bn'
-import { Modal, Field, Spinner, Badge, EmptyState, Menu, MenuItem, Kbd } from '@/ui/components'
+import { Modal, Field, Spinner, Badge, EmptyState, Menu, MenuItem, Kbd, ConfirmDialog } from '@/ui/components'
 import { PERMS } from '../perm'
 import { invoiceHtml, printDoc, dueReceiptHtml, methodBn } from '@/lib/printing'
 import { useBusinessInfo } from '@/lib/useBusinessInfo'
@@ -66,6 +66,7 @@ export function POS() {
   const [customerId, setCustomerId] = useState<string | null>(null)
   const [invoiceDiscount, setInvoiceDiscount] = useState(0)
   const [payOpen, setPayOpen] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
   const [custOpen, setCustOpen] = useState(false)
   const [custSearch, setCustSearch] = useState('')
   const [newCustOpen, setNewCustOpen] = useState(false)
@@ -294,7 +295,7 @@ export function POS() {
           </div>
           {cart.length > 0 ? (
             <>
-              <button className="btn btn-ghost btn-sm" onClick={() => { if (window.confirm(t('pos_clear_confirm'))) clearCart() }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setClearOpen(true)}>
                 <Trash2 size={14} /> খালি
               </button>
               <button className="btn btn-secondary btn-sm" onClick={() => void holdSale()}>
@@ -544,6 +545,16 @@ export function POS() {
           />
         </Field>
       </Modal>
+
+      <ConfirmDialog
+        open={clearOpen}
+        onClose={() => setClearOpen(false)}
+        onConfirm={() => { setClearOpen(false); clearCart() }}
+        title={t('pos_clear_confirm')}
+        body="কার্টের সব আইটেম মুছে যাবে। এটি ফেরানো যাবে না।"
+        confirmLabel="খালি করুন"
+        danger
+      />
 
       {/* last sale success */}
       {lastSale ? (

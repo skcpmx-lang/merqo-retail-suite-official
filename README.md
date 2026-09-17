@@ -29,7 +29,7 @@
 npm install            # ডিপেন্ডেন্সি
 npm run dev            # ডেভ (Electron + Vite HMR)
 npm run typecheck      # tsc (main+core, renderer)
-npx vitest run --config tests/vitest.config.ts   # সম্পূর্ণ টেস্ট স্যুট (83 টেস্ট, in-memory SQLite)
+npx vitest run --config tests/vitest.config.ts   # সম্পূর্ণ টেস্ট স্যুট (98 টেস্ট, in-memory SQLite)
 npm run build          # প্রোডাকশন বিল্ড → out/
 npm run dist           # Windows NSIS ইনস্টলার → release/
 ```

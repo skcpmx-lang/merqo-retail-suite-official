@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, Save, KeyRound, Lock, Printer, Server } from 'lucide-react'
+import { Building2, Save, KeyRound, Lock, Printer, Server, Smartphone } from 'lucide-react'
 import { api } from '@/api/client'
 import { useSession } from '@/state/session'
 import { useToast } from '@/state/toast'
 import { t, money } from '@/i18n/bn'
 import { PageHeader, Field, Modal, Badge } from '@/ui/components'
+// monitor section uses badge classnames from components.css
 import { PERMS } from '../perm'
 
 export function Settings() {
@@ -192,6 +193,9 @@ export function Settings() {
         <DeviceSection />
       </div>
 
+      {/* owner phone monitor */}
+      {canManage ? <MonitorSection /> : null}
+
       <PasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
       <PinModal open={pinOpen} hasPin={!!me?.has_pin} onClose={() => setPinOpen(false)} />
     </div>
@@ -315,5 +319,58 @@ function PinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean; o
         <Field label="নতুন পিন (৪–৬ সংখ্যা)" required><input className="input num" type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} /></Field>
       </div>
     </Modal>
+  )
+}
+
+
+/* ── ফোন মনিটর — মালিকের রিড-অনলি ড্যাশবোর্ড চালু/বন্ধ ── */
+function MonitorSection() {
+  const { toast } = useToast()
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [newKey, setNewKey] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const load = () => { void api.get<{ enabled: boolean }>('/monitor/status').then((r) => setEnabled(r.enabled)).catch(() => setEnabled(null)) }
+  useEffect(load, [])
+
+  const enable = async () => {
+    setBusy(true)
+    try {
+      const r = await api.post<{ key: string }>('/monitor/enable')
+      setNewKey(r.key)
+      setEnabled(true)
+      toast('মনিটর চালু হয়েছে', 'success')
+    } catch { toast('চালু করা যায়নি — আবার চেষ্টা করুন।', 'error') } finally { setBusy(false) }
+  }
+  const disable = async () => {
+    setBusy(true)
+    try {
+      await api.post('/monitor/disable')
+      setEnabled(false)
+      setNewKey('')
+      toast('মনিটর বন্ধ হয়েছে', 'success')
+    } catch { toast('বন্ধ করা যায়নি — আবার চেষ্টা করুন।', 'error') } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="card card-pad" style={{ marginTop: 16 }}>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><Smartphone size={17} /> ফোন মনিটর</h3>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        একই নেটওয়ার্কে থাকা মালিকের ফোন থেকে রিড-অনলি ব্যবসার অবস্থা দেখা যায়। ফোন থেকে কোনো লেনদেন বদলানো যায় না।
+      </p>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
+        <span className={`badge ${enabled ? 'badge-success' : ''}`}>{enabled ? 'চালু' : 'বন্ধ'}</span>
+        {enabled
+          ? <button className="btn btn-danger-soft btn-sm" disabled={busy} onClick={() => void disable()}>বন্ধ করুন</button>
+          : <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => void enable()}>কী তৈরি করুন</button>}
+      </div>
+      {newKey ? (
+        <div className="alert alert-warning" style={{ marginTop: 12, flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+          <b>{t('monitor_key')}</b>
+          <code className="num" style={{ fontSize: 13, wordBreak: 'break-all' }}>{newKey}</code>
+          <span className="small">{t('monitor_key_note')}</span>
+        </div>
+      ) : null}
+    </div>
   )
 }

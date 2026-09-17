@@ -544,6 +544,26 @@ export function buildRoutes(db: DB, core: { initialized: () => boolean; monitorT
     res.json({ ok: true })
   }))
 
+  /* ───────────── owner phone monitor (read-only, token-gated) ───────────── */
+  r.get('/monitor/status', requireAuth, requirePerm(PERMS.SETTINGS_MANAGE), h((req, res) => {
+    const row = db.prepare(`SELECT value FROM settings WHERE business_id=? AND key='monitor_key_hash'`).get(req.auth!.businessId) as { value: string } | undefined
+    res.json({ enabled: !!row?.value && row.value !== 'null' })
+  }))
+  r.post('/monitor/enable', requireAuth, requirePerm(PERMS.SETTINGS_MANAGE), h((req, res) => {
+    const raw = newMonitorToken()
+    const hash = sha256(raw)
+    settingsSvc.setSetting(db, req.auth!.businessId, 'monitor_key_hash', hash)
+    core.setMonitorToken(hash) // immediate effect — hash form, same as boot restore
+    audit(db, ctxOf(req), 'monitor.enable', 'settings', req.auth!.businessId, null, null)
+    res.json({ key: raw }) // raw key shown exactly once
+  }))
+  r.post('/monitor/disable', requireAuth, requirePerm(PERMS.SETTINGS_MANAGE), h((req, res) => {
+    settingsSvc.setSetting(db, req.auth!.businessId, 'monitor_key_hash', null)
+    core.setMonitorToken(null)
+    audit(db, ctxOf(req), 'monitor.disable', 'settings', req.auth!.businessId, null, null)
+    res.json({ ok: true })
+  }))
+
   /* ───────────── catalog helpers ───────────── */
   r.get('/catalog', requireAuth, h((req, res) => {
     const businessId = req.auth!.businessId
