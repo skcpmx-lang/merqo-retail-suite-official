@@ -5,7 +5,7 @@ Target: Windows 10/11 x64 · Check each box only after actually performing the s
 ---
 
 ## A · Installation & First Run
-- [ ] 1. **Install** — run `MERQO-Retail-Suite-Setup-1.0.0.exe`; choose a custom install directory; verify EULA shows, desktop + Start-menu shortcuts are created with the MERQO icon; uninstall entry appears in Windows "Apps & features" as *MERQO Retail Suite 1.0.0*.
+- [ ] 1. **Install** — run `MERQO-Retail-Suite-Setup-1.0.0.exe`; BEFORE installing, right-click the exe → Properties → **Digital Signatures**: signature must show MERQO's legal publisher name, SHA-256 digest and a timestamp (see docs/CODE-SIGNING.md); then install choosing a custom directory; verify EULA shows, desktop + Start-menu shortcuts are created with the MERQO icon; uninstall entry appears in Windows "Apps & features" as *MERQO Retail Suite 1.0.0*; on Windows 11 with Smart App Control ON, the installer must launch WITHOUT a block dialog.
 - [ ] 2. **First-run setup** — launch; the **Setup wizard** must open (never a login screen); verify no demo data, demo store, or `owner/merqo123` appears anywhere.
 - [ ] 3. **Owner account** — create owner (Bengali name, password); complete business name/address/phone + cash/bank/MFS opening balances → dashboard opens with ৳০ সংখ্যা and no errors.
 - [ ] 4. **Restart application** — close and reopen; login screen appears; log in with the owner credentials just created.

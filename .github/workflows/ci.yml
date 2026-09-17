@@ -59,10 +59,68 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
-      - name: Build + package NSIS installer
+      - name: Clean release directory (canonical artifact name — no _N suffixes)
+        shell: pwsh
+        run: if (Test-Path release) { Remove-Item release -Recurse -Force }
+
+      - name: Build + package NSIS installer (signs app exe, uninstaller, installer via sign hook)
         run: npm run dist
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 0
+          # Signing identity — both routes are optional; absent = unsigned RC build (explicit warning in logs).
+          # Route 1: OV cert with private key in the org's own Azure Key Vault (AzureSignTool)
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
+          # Route 2: legacy file-based PFX
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Assert canonical installer filename (release blocker if suffixed)
+        shell: pwsh
+        run: |
+          $exes = Get-ChildItem release/*.exe
+          $names = $exes.Name -join ', '
+          Write-Host "built exes: $names"
+          if (($exes | Measure-Object).Count -ne 1) { throw "expected exactly ONE installer exe, got: $names" }
+          if ($exes[0].Name -ne 'MERQO-Retail-Suite-Setup-1.0.0.exe') { throw "unexpected artifact name: $($exes[0].Name) (no _2/_3 suffixes allowed)" }
+
+      - name: Verify signatures (strict when signing identity is configured)
+        shell: pwsh
+        env:
+          AZURE_KEY_VAULT_URI: ${{ secrets.AZURE_KEY_VAULT_URI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_CERT_NAME: ${{ secrets.AZURE_CERT_NAME }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          $signingConfigured = ($env:AZURE_KEY_VAULT_URI -and $env:AZURE_TENANT_ID -and $env:AZURE_CLIENT_ID -and $env:AZURE_CLIENT_SECRET -and $env:AZURE_CERT_NAME) -or $env:WIN_CSC_LINK
+          $targets = @(Get-ChildItem release/*.exe)
+          $appExe = Get-ChildItem release/win-unpacked/*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($appExe) { $targets += $appExe }
+          $rows = @()
+          foreach ($t in $targets) {
+            $sig = Get-AuthenticodeSignature $t.FullName
+            $rows += [pscustomobject]@{
+              File = $t.Name
+              Status = [string]$sig.Status
+              Signer = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '(unsigned)' }
+              Timestamp = if ($sig.TimeStamperCertificate) { $sig.TimeStamperCertificate.Subject } else { '(none)' }
+            }
+          }
+          $rows | Format-Table -AutoSize | Out-String | Write-Host
+          ($rows | ConvertTo-Json) | Out-File -Encoding utf8 release/signature-report.json
+          if ($signingConfigured) {
+            $bad = $rows | Where-Object { $_.Status -ne 'Valid' }
+            if ($bad) { throw "SIGNATURE VERIFICATION FAILED:`n$($bad | Format-Table -AutoSize | Out-String)" }
+            Write-Host "SIGNATURE VERIFICATION PASSED — all production binaries Valid (SHA-256, RFC-3161 timestamped)"
+          } else {
+            Write-Host "::warning::Production binaries are UNSIGNED — no signing identity (secrets) configured. Smart App Control WILL block this installer. Configure signing secrets per docs/CODE-SIGNING.md before public release."
+          }
 
       - name: Record installer name + SHA256
         shell: pwsh
@@ -76,11 +134,13 @@ jobs:
           $info
           ``````"
 
-      - name: Upload checksum manifest artifact
+      - name: Upload checksum + signature manifest artifacts
         uses: actions/upload-artifact@v4
         with:
           name: installer-info
-          path: release/installer-info.txt
+          path: |
+            release/installer-info.txt
+            release/signature-report.json
           if-no-files-found: error
           retention-days: 90
 
@@ -123,7 +183,8 @@ jobs:
       - name: Silent install
         shell: pwsh
         run: |
-          $setup = Get-ChildItem installer/*.exe | Select-Object -First 1
+          $setup = Get-ChildItem installer/*.exe | Where-Object { $_.Name -eq 'MERQO-Retail-Suite-Setup-1.0.0.exe' } | Select-Object -First 1
+          if (-not $setup) { $setup = Get-ChildItem installer/*.exe | Select-Object -First 1 }
           Write-Host "Installing $($setup.Name)"
           $p = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait -PassThru
           Write-Host "installer exit: $($p.ExitCode)"
