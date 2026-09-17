@@ -1,0 +1,28 @@
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: #f6f7f9; color: #1a2332;
+  font-family: 'Hind Siliguri', 'Nirmala UI', 'SolaimanLipi', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+}
+.wrap { max-width: 460px; text-align: center; padding: 32px; user-select: none; }
+.logo { font-size: 30px; font-weight: 700; letter-spacing: 2px; }
+.logo span { color: #0e7c66; }
+.sub { font-size: 13px; color: #5a6675; margin: 2px 0 22px; }
+.icon { font-size: 34px; margin-bottom: 6px; }
+h1 { font-size: 19px; margin: 0 0 10px; }
+.hint { font-size: 14px; color: #40506a; line-height: 1.7; margin: 0 0 22px; }
+.actions { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+button {
+  width: 280px; padding: 10px 18px; font-size: 14px; border-radius: 8px; cursor: pointer;
+  font-family: inherit; border: 1px solid transparent;
+}
+button.primary { background: #0e7c66; color: #fff; border: none; }
+button.primary:hover { background: #0b6a58; }
+button.ghost { background: #fff; border-color: #cfd6df; color: #1a2332; }
+button.ghost:hover { border-color: #9aa5b1; }
+button:disabled { opacity: 0.6; cursor: default; }
+.msg { min-height: 20px; font-size: 13px; color: #40506a; margin: 16px 0 0; }
+.ref { font-size: 12px; color: #8a95a5; margin: 6px 0 0; }
+.support { font-size: 12px; color: #8a95a5; margin: 4px 0 0; }

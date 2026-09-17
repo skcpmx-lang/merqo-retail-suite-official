@@ -33,7 +33,7 @@ export function createCustomer(db: DB, ctx: AuditCtx, businessId: string, input:
     if (!input.name?.trim()) throw new CoreError('NAME_REQUIRED', 'গ্রাহকের নাম দিন।')
     if (input.code?.trim()) {
       const dup = db.prepare(`SELECT 1 FROM customers WHERE business_id=? AND code=?`).get(businessId, input.code.trim())
-      if (dup) throw new CoreError('DUP_CODE', `কাস্টমার কোড "${input.code}" আগে থেকেই আছে।`)
+      if (dup) throw new CoreError('DUP_CODE', `গ্রাহক কোড "${input.code}" আগে থেকেই আছে।`)
     }
     const id = newId()
     db.prepare(
@@ -56,7 +56,7 @@ export function updateCustomer(db: DB, ctx: AuditCtx, businessId: string, id: st
   const before = getCustomer(db, businessId, id)
   if (patch.code?.trim() && patch.code.trim() !== before.code) {
     const dup = db.prepare(`SELECT 1 FROM customers WHERE business_id=? AND code=? AND id<>?`).get(businessId, patch.code.trim(), id)
-    if (dup) throw new CoreError('DUP_CODE', `কাস্টমার কোড "${patch.code}" আগে থেকেই আছে।`)
+    if (dup) throw new CoreError('DUP_CODE', `গ্রাহক কোড "${patch.code}" আগে থেকেই আছে।`)
   }
   const next = { ...before, ...patch, name: patch.name?.trim() || before.name }
   db.prepare(`UPDATE customers SET code=?, name=?, phone=?, address=?, email=?, note=?, status=? WHERE id=? AND business_id=?`).run(

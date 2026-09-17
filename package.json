@@ -80,7 +80,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "legalTrademarks": "MERQO"
     },
     "nsis": {
       "oneClick": false,
@@ -89,7 +90,18 @@
       "createStartMenuShortcut": true,
       "shortcutName": "MERQO Retail Suite",
       "artifactName": "MERQO-Retail-Suite-Setup-${version}.exe",
-      "license": "docs/LICENSE-COMMERCIAL.md"
-    }
+      "license": "docs/LICENSE-COMMERCIAL.md",
+      "unicode": true,
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "en_US"
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "resources/icons",
+        "to": "icons/"
+      }
+    ]
   }
 }

@@ -29,7 +29,7 @@ export function globalSearch(db: DB, businessId: string, term: string, limitPerT
   for (const s of db
     .prepare(`SELECT id, name, phone, payable FROM suppliers WHERE business_id=? AND status='active' AND (name LIKE ? OR phone LIKE ? OR company LIKE ?) LIMIT ?`)
     .all(businessId, like, like, like, limitPerType) as Array<{ id: string; name: string; phone: string | null; payable: number }>) {
-    hits.push({ type: 'supplier', id: s.id, title: s.name, subtitle: `${s.phone ?? '—'} · বাকি ৳${(s.payable / 100).toLocaleString('en-IN')}` })
+    hits.push({ type: 'supplier', id: s.id, title: s.name, subtitle: `${s.phone ?? '—'} · বকেয়া ৳${(s.payable / 100).toLocaleString('en-IN')}` })
   }
   for (const s of db
     .prepare(`SELECT id, invoice_no, customer_name, total, date FROM sales WHERE business_id=? AND status<>'voided' AND invoice_no LIKE ? ORDER BY date DESC LIMIT ?`)

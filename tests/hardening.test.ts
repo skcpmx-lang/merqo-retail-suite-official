@@ -706,7 +706,7 @@ describe('N · phone monitor cannot mutate anything', () => {
 /* ═══════════ O · HISTORICAL IMMUTABILITY — metadata edits never rewrite history ═══════════ */
 describe('O · historical immutability', () => {
   it('renaming/recategorizing a product leaves past invoices intact', async () => {
-    const p = await api(tokens.owner, 'POST', '/products', { name: '旧 নাম', purchase_price: 1000, selling_price: 2000, opening_stock: 10 })
+    const p = await api(tokens.owner, 'POST', '/products', { name: 'পুরনো নাম', purchase_price: 1000, selling_price: 2000, opening_stock: 10 })
     const pid = p.json.id as string
     const sale = await api(tokens.owner, 'POST', '/sales', {
       items: [{ product_id: pid, qty: 1, unit_price: 2000 }],

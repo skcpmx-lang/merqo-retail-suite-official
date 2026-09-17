@@ -147,7 +147,7 @@ export const bn = {
   nav_finance: 'আর্থিক হিসাব',
   nav_mfs: 'MFS এজেন্ট',
   nav_reports: 'রিপোর্ট',
-  nav_documents: 'ইনভয়েস ও রসিদ',
+  nav_documents: 'চালান ও রসিদ',
   nav_staff: 'স্টাফ ও অনুমতি',
   nav_notifications: 'নোটিফিকেশন',
   nav_data: 'ব্যাকআপ ও ডেটা',
@@ -483,7 +483,7 @@ export const bn = {
   export_csv: 'CSV এক্সপোর্ট',
   report_empty: 'এই সময়ে কোনো তথ্য নেই',
 
-  /* ইনভয়েস */
+  /* চালান */
   invoice_title: 'চালান',
   receipt: 'রসিদ',
   invoice_from: 'বিক্রেতা',
@@ -496,7 +496,7 @@ export const bn = {
   invoice_footer_note: 'বিক্রীত পণ্য সংশ্লিষ্ট নীতিমালে ফেরতযোগ্য',
   invoice_number_label: 'চালান নং',
   served_by: 'বিক্রয়কর্মী',
-  invoice_settings_title: 'ইনভয়েস ও রসিদ',
+  invoice_settings_title: 'চালান ও রসিদ',
   invoice_settings_sub: 'নম্বর পদ্ধতি, টেমপ্লেট ও ফুটার',
   invoice_prefix: 'চালান প্রিফিক্স',
   receipt_prefix: 'রসিদ প্রিফিক্স',

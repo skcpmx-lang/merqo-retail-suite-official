@@ -1,6 +1,7 @@
 import { BrowserWindow, app, ipcMain, dialog, shell, screen } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
+import http from 'node:http'
 import { startCore, DEFAULT_PORT, type CoreHandle } from '@core/index'
 import { openDatabase, integrityCheck, type DB } from '@core/db/connection'
 import { getSetting, setSetting } from '@core/services/settings'
@@ -10,9 +11,83 @@ import { loadConfig, saveConfig, paths, logLine, type AppConfig } from './config
 let db: DB | null = null
 let core: CoreHandle | null = null
 let mainWindow: BrowserWindow | null = null
+let splash: BrowserWindow | null = null
 let mode: 'standalone' | 'client' = 'standalone'
+let coreError = ''
+let rendererAliveSeen = false
+let watchdog: NodeJS.Timeout | null = null
 
 const DEV_URL = process.env['VITE_DEV_SERVER_URL']
+/** CI packaged-launch smoke mode: physical proof the installed app renders + serves. */
+const SMOKE = process.env['MQ_SMOKE'] === '1'
+const SMOKE_OUT = process.env['MQ_SMOKE_OUT'] ?? ''
+
+function smokeReport(result: Record<string, unknown>, exitCode: number): void {
+  try {
+    if (SMOKE_OUT) fs.writeFileSync(SMOKE_OUT, JSON.stringify({ time: new Date().toISOString(), pid: process.pid, version: app.getVersion(), ...result }, null, 2))
+    logLine(`[smoke] ${JSON.stringify(result)}`)
+  } catch { /* */ }
+  app.exit(exitCode)
+}
+
+function coreHealth(timeoutMs = 1500): Promise<{ ok: boolean; detail: string }> {
+  const port = core ? core.port : 0
+  if (!port) return Promise.resolve({ ok: false, detail: coreError || 'core-not-running' })
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/api/meta', timeout: timeoutMs }, (res) => {
+      let body = ''
+      res.on('data', (c) => { body += c })
+      res.on('end', () => resolve({ ok: res.statusCode === 200, detail: body.slice(0, 300) }))
+    })
+    req.on('timeout', () => { req.destroy(); resolve({ ok: false, detail: 'timeout' }) })
+    req.on('error', (e) => resolve({ ok: false, detail: e.message }))
+  })
+}
+
+/* ───────────────────── splash (never a blank white window) ───────────────────── */
+
+function splashHtml(): string {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    html,body{margin:0;height:100%;background:#f6f7f9;font-family:'Hind Siliguri','Nirmala UI',sans-serif;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#1a2332;user-select:none}
+    .logo{font-size:30px;font-weight:700;letter-spacing:2px}
+    .logo span{color:#0e7c66}
+    .sub{font-size:13px;color:#5a6675;margin-bottom:8px}
+    .spin{width:22px;height:22px;border:3px solid #d7dde6;border-top-color:#0e7c66;border-radius:50%;animation:s .8s linear infinite}
+    @keyframes s{to{transform:rotate(360deg)}}
+    .msg{font-size:14px;color:#40506a}
+  </style></head><body>
+    <div class="logo">MERQO<span>.</span></div><div class="sub">Retail Suite</div>
+    <div class="spin"></div><div class="msg">ব্যবসার পরিবেশ প্রস্তুত করা হচ্ছে…</div>
+  </body></html>`
+}
+
+function createSplash(): void {
+  splash = new BrowserWindow({
+    width: 380, height: 240, frame: false, resizable: false, show: true,
+    backgroundColor: '#f6f7f9', autoHideMenuBar: true,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+  })
+  void splash.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(splashHtml())}`)
+}
+
+function closeSplash(): void {
+  try { splash?.destroy() } catch { /* */ }
+  splash = null
+}
+
+/* ───────────────────── recovery (fatal startup error — Bengali, no raw errors) ───────────────────── */
+
+function loadRecoveryWindow(reason: string): void {
+  rendererAliveSeen = false
+  if (watchdog) { clearTimeout(watchdog); watchdog = null }
+  closeSplash()
+  const ref = `MQ-${Date.now().toString(36).toUpperCase()}`
+  logLine(`[fatal] startup recovery shown — reason: ${reason} ref: ${ref} coreError: ${coreError}`)
+  const target = mainWindow ?? createWindow()
+  void target?.loadFile(path.join(__dirname, '../renderer/recovery.html'), { search: `ref=${encodeURIComponent(ref)}` })
+  target?.show()
+}
 
 /* ───────────────────── core lifecycle ───────────────────── */
 
@@ -23,17 +98,33 @@ function bootCore(cfg: AppConfig): void {
 
   mode = 'standalone'
   const p = paths()
-  db = openDatabase(p.dbFile)
+  try {
+    db = openDatabase(p.dbFile)
+  } catch (e) {
+    db = null
+    coreError = `database: ${(e as Error).message}`
+    logLine(`[boot] database open failed: ${(e as Error).stack ?? e}`)
+    return
+  }
   const integ = integrityCheck(db)
   if (!integ) logLine('[boot] WARNING: database integrity_check failed — running in read-cautious mode')
 
-  core = startCore({
-    db,
-    port: cfg.lanServer ? cfg.lanPort : DEFAULT_PORT,
-    host: cfg.lanServer ? '0.0.0.0' : '127.0.0.1',
-    backupDir: p.backupDir,
-    log: logLine
-  })
+  try {
+    core = startCore({
+      db,
+      port: cfg.lanServer ? cfg.lanPort : DEFAULT_PORT,
+      host: cfg.lanServer ? '0.0.0.0' : '127.0.0.1',
+      backupDir: p.backupDir,
+      log: logLine
+    })
+    coreError = ''
+    logLine(`[boot] core listening on ${cfg.lanServer ? '0.0.0.0' : '127.0.0.1'}:${core.port} (lanServer=${cfg.lanServer})`)
+  } catch (e) {
+    core = null
+    coreError = `core: ${(e as Error).message}`
+    logLine(`[boot] core start failed: ${(e as Error).stack ?? e}`)
+    return
+  }
   // restore persisted monitor key (hash) — read-only phone dashboard
   try {
     const bizRows = db.prepare(`SELECT id FROM businesses WHERE status='active'`).all() as Array<{ id: string }>
@@ -135,11 +226,13 @@ async function doPrint(req: PrintRequest): Promise<{ ok: boolean; pdfPath?: stri
 
 /* ───────────────────── window ───────────────────── */
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   const cfg = loadConfig()
   const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize
   const w = Math.min(cfg.window.width || 1366, sw)
   const h = Math.min(cfg.window.height || 800, sh)
+  const iconFile = path.join(process.resourcesPath ?? '', 'icons', 'icon.ico')
+  const devIcon = path.join(app.getAppPath(), 'resources', 'icons', 'icon.ico')
 
   mainWindow = new BrowserWindow({
     width: w,
@@ -151,7 +244,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: '#f6f7f9',
     title: 'MERQO Retail Suite',
-    icon: path.join(process.env.VITE_DEV === 'true' ? '' : process.resourcesPath ?? '', 'icon.ico'),
+    icon: DEV_URL ? devIcon : iconFile,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -162,6 +255,28 @@ function createWindow(): void {
     }
   })
 
+  // ── startup contract: every failure mode lands on a Bengali recovery screen ──
+  rendererAliveSeen = false
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url, isMain) => {
+    if (!isMain || code === -3) return // -3 = aborted (redirect) — not fatal
+    logLine(`[fatal] did-fail-load code=${code} desc=${desc} url=${url}`)
+    loadRecoveryWindow(`did-fail-load:${code}`)
+  })
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    logLine(`[fatal] renderer gone: ${details.reason}`)
+    loadRecoveryWindow(`render-gone:${details.reason}`)
+  })
+  mainWindow.webContents.on('preload-error', (_e, p, err) => {
+    logLine(`[fatal] preload error: ${p} :: ${err.message}`)
+    loadRecoveryWindow('preload-error')
+  })
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (watchdog) clearTimeout(watchdog)
+    // 20s without a live renderer signal ⇒ blank-page class failure ⇒ recovery
+    watchdog = setTimeout(() => {
+      if (!rendererAliveSeen) loadRecoveryWindow('renderer-ready-timeout')
+    }, 20_000)
+  })
   mainWindow.once('ready-to-show', () => {
     if (cfg.window.maximized) mainWindow?.maximize()
     else mainWindow?.show()
@@ -193,6 +308,7 @@ function createWindow(): void {
 
   if (DEV_URL) mainWindow.loadURL(DEV_URL)
   else mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+  return mainWindow
 }
 
 /* ───────────────────── IPC ───────────────────── */
@@ -251,6 +367,36 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('merqo:revealPath', (_e, p: string) => { shell.showItemInFolder(p); return true })
+
+  /* ── startup contract IPC ── */
+  ipcMain.on('merqo:renderer-alive', () => {
+    rendererAliveSeen = true
+    if (watchdog) { clearTimeout(watchdog); watchdog = null }
+    closeSplash()
+    logLine('[boot] renderer alive — app ready')
+    if (SMOKE) {
+      void coreHealth().then((h) => {
+        smokeReport({ rendererAlive: true, coreHealthOk: h.ok, coreDetail: h.detail.slice(0, 120) }, h.ok ? 0 : 1)
+      })
+    }
+  })
+  ipcMain.handle('merqo:core-health', () => coreHealth())
+  ipcMain.handle('merqo:retry-startup', () => {
+    logLine('[boot] retry-startup requested from recovery screen')
+    bootCore(loadConfig())
+    return { ok: !!core || mode === 'client' }
+  })
+  ipcMain.on('merqo:relaunch', () => {
+    logLine('[boot] relaunch requested')
+    app.relaunch()
+    app.exit(0)
+  })
+  ipcMain.handle('merqo:open-logs', async () => {
+    const { logDir } = paths()
+    fs.mkdirSync(logDir, { recursive: true })
+    await shell.openPath(logDir)
+    return true
+  })
 }
 
 /* ───────────────────── app lifecycle ───────────────────── */
@@ -264,11 +410,20 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
-    logLine(`[boot] MERQO Retail Suite v${app.getVersion()} starting`)
-    const cfg = loadConfig()
-    bootCore(cfg)
+    logLine(`[boot] MERQO Retail Suite v${app.getVersion()} starting (smoke=${SMOKE ? '1' : '0'})`)
+    if (SMOKE) app.disableHardwareAcceleration()
+    createSplash()
+    try {
+      const cfg = loadConfig()
+      bootCore(cfg)
+    } catch (e) {
+      coreError = `boot: ${(e as Error).message}`
+      logLine(`[boot] bootCore threw: ${(e as Error).stack ?? e}`)
+    }
     registerIpc()
     createWindow()
+    // smoke watchdog: physical launch must render within 45s
+    if (SMOKE) setTimeout(() => smokeReport({ rendererAlive: false, coreHealthOk: false, error: '45s-timeout' }, 1), 45_000)
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
   })

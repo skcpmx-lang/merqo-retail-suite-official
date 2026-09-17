@@ -104,3 +104,59 @@ jobs:
           path: release/*.exe
           if-no-files-found: error
           retention-days: 14
+
+  # ── PHYSICAL packaged-app smoke: install the real NSIS exe on real Windows and launch it ──
+  packaged-smoke:
+    runs-on: windows-latest
+    needs: windows-installer
+    steps:
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: MERQO-Retail-Suite-Setup
+          path: installer
+
+      - name: Silent install
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem installer/*.exe | Select-Object -First 1
+          Write-Host "Installing $($setup.Name)"
+          $p = Start-Process -FilePath $setup.FullName -ArgumentList "/S" -Wait -PassThru
+          Write-Host "installer exit: $($p.ExitCode)"
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "MERQO*.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch "Uninstall" } | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem "$env:ProgramFiles" -Directory -Filter "MERQO*" | ForEach-Object { Get-ChildItem $_.FullName -Recurse -Filter "MERQO*.exe" } | Where-Object { $_.Name -notmatch "Uninstall" } | Select-Object -First 1 }
+          if (-not $exe) { throw "installed exe not found" }
+          Write-Host "exe: $($exe.FullName)"
+          "EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Launch packaged app (smoke mode)
+        shell: pwsh
+        env:
+          MQ_SMOKE: '1'
+          MQ_SMOKE_OUT: ${{ github.workspace }}\smoke-report.json
+        run: |
+          $proc = Start-Process -FilePath $env:EXE -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            if (Test-Path smoke-report.json) { $ok = $true; break }
+            if ($proc.HasExited) { Write-Host "app exited early: $($proc.ExitCode)"; break }
+          }
+          Start-Sleep -Seconds 2
+          try { Stop-Process -Name "MERQO Retail Suite" -Force -ErrorAction SilentlyContinue } catch {}
+          if (-not (Test-Path smoke-report.json)) { throw "PACKAGED SMOKE FAILED: no renderer-alive report within 60s — blank screen class failure" }
+          Get-Content smoke-report.json | Write-Host
+          $r = Get-Content smoke-report.json | ConvertFrom-Json
+          if (-not $r.rendererAlive) { throw "PACKAGED SMOKE FAILED: renderer never became alive" }
+          if (-not $r.coreHealthOk) { throw "PACKAGED SMOKE FAILED: embedded core not healthy after render" }
+          Write-Host "PACKAGED SMOKE PASSED — renderer alive, core healthy, version $($r.version)"
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-smoke-report
+          path: smoke-report.json
+          if-no-files-found: ignore
+          retention-days: 30
